@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Materiais</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-dark bg-dark">
+    <div class="container"><a class="navbar-brand" href="/">Almoxarifado</a></div>
+</nav>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Materiais <small class="text-muted">(RF12)</small></h2>
+        <a href="/materiais/novo" class="btn btn-primary">+ Novo Material</a>
+    </div>
+
+    <!-- RN06 - Bloco de alerta de estoque mínimo -->
+    <div th:if="${!#lists.isEmpty(alertas)}" class="alert alert-warning shadow-sm">
+        <strong>⚠ Atenção:</strong>
+        <span th:text="${#lists.size(alertas)}"></span> material(is) com estoque abaixo do mínimo:
+        <span th:each="a, it : ${alertas}">
+            <span class="badge bg-danger" th:text="${a.nome + ' (' + a.estoqueAtual + '/' + a.estoqueMinimo + ')'}"></span>
+        </span>
+    </div>
+
+    <table class="table table-striped bg-white shadow-sm align-middle">
+        <thead class="table-dark">
+        <tr>
+            <th>#</th><th>SKU</th><th>Nome</th><th>Categoria</th>
+            <th>Unidade</th><th class="text-end">Estoque</th><th class="text-end">Mínimo</th>
+            <th>Status</th><th class="text-end">Ações</th>
+        </tr>
+        </thead>
+        <tbody>
+        <!-- A linha inteira fica destacada quando o material está em alerta (RN06) -->
+        <tr th:each="m : ${materiais}"
+            th:classappend="${m.estoqueAbaixoDoMinimo} ? 'table-danger' : ''">
+            <td th:text="${m.id}"></td>
+            <td th:text="${m.codigoSku} ?: '-'"></td>
+            <td th:text="${m.nome}"></td>
+            <td th:text="${m.categoria != null ? m.categoria.nome : '-'}"></td>
+            <td th:text="${m.unidadeMedida} ?: '-'"></td>
+            <td class="text-end fw-bold" th:text="${m.estoqueAtual}"></td>
+            <td class="text-end" th:text="${m.estoqueMinimo}"></td>
+            <td>
+                <span th:if="${m.estoqueAbaixoDoMinimo}" class="badge bg-danger">REPOR</span>
+                <span th:unless="${m.estoqueAbaixoDoMinimo}" class="badge bg-success">OK</span>
+            </td>
+            <td class="text-end">
+                <a th:href="@{|/materiais/${m.id}/editar|}" class="btn btn-sm btn-outline-primary">Editar</a>
+            </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(materiais)}">
+            <td colspan="9" class="text-center text-muted">Nenhum material cadastrado.</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

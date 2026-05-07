@@ -1,0 +1,22 @@
+package com.fundacao.aualmoxarifado.repository;
+
+import com.fundacao.aualmoxarifado.domain.Categoria;
+import com.fundacao.aualmoxarifado.domain.Material;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+
+import java.util.List;
+
+public interface MaterialRepository extends JpaRepository<Material, Long> {
+
+    /** RN06 - retorna materiais cujo estoque atual está igual ou abaixo do mínimo. */
+    @Query("""
+           SELECT m FROM Material m
+           WHERE m.estoqueAtual <= m.estoqueMinimo
+           ORDER BY (m.estoqueAtual - m.estoqueMinimo) ASC
+           """)
+    List<Material> findEmAlertaDeEstoque();
+
+    /** RN07 - usado para verificar se há materiais vinculados antes de excluir uma categoria. */
+    boolean existsByCategoria(Categoria categoria);
+}
