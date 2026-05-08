@@ -1,7 +1,8 @@
 package com.fundacao.aualmoxarifado.controller;
 
 import com.fundacao.aualmoxarifado.domain.Material;
-import com.fundacao.aualmoxarifado.repository.CategoriaRepository;
+import com.fundacao.aualmoxarifado.repository.AreaRepository;
+import com.fundacao.aualmoxarifado.repository.SubcategoriaRepository;
 import com.fundacao.aualmoxarifado.service.MaterialService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,8 @@ import org.springframework.web.bind.annotation.*;
 public class MaterialController {
 
     private final MaterialService materialService;
-    private final CategoriaRepository categoriaRepository;
+    private final AreaRepository areaRepository;
+    private final SubcategoriaRepository subcategoriaRepository;
 
     @GetMapping
     public String listar(Model model) {
@@ -28,25 +30,66 @@ public class MaterialController {
     @GetMapping("/novo")
     public String formNovo(Model model) {
         model.addAttribute("material", new Material());
-        model.addAttribute("categorias", categoriaRepository.findAll());
+        prepararListasDoForm(model);
         return "materiais/form";
     }
 
     @GetMapping("/{id}/editar")
     public String editar(@PathVariable Long id, Model model) {
         model.addAttribute("material", materialService.buscar(id));
-        model.addAttribute("categorias", categoriaRepository.findAll());
+        prepararListasDoForm(model);
         return "materiais/form";
     }
 
+    /**
+     * Salva o material. Em caso de cadastro novo, redireciona direto para a
+     * tela de etiqueta para que o usuário possa imprimir o código de barras
+     * recém-gerado (RF18).
+     */
     @PostMapping
     public String salvar(@Valid @ModelAttribute("material") Material material,
                          BindingResult br, Model model) {
         if (br.hasErrors()) {
-            model.addAttribute("categorias", categoriaRepository.findAll());
+            prepararListasDoForm(model);
             return "materiais/form";
         }
-        materialService.salvar(material);
-        return "redirect:/materiais";
+        try {
+            boolean ehNovo = material.getId() == null;
+            Material salvo = materialService.salvar(material);
+            return ehNovo
+                    ? "redirect:/materiais/" + salvo.getId() + "/etiqueta"
+                    : "redirect:/materiais";
+        } catch (RuntimeException ex) {
+            model.addAttribute("erro", ex.getMessage());
+            prepararListasDoForm(model);
+            return "materiais/form";
+        }
+    }
+
+    /**
+     * RF18 - Página de etiqueta: exibe nome, SKU e o código de barras renderizado
+     * via JsBarcode no navegador. O usuário pode imprimir/colar a etiqueta
+     * no produto físico para futura "bipagem".
+     */
+    @GetMapping("/{id}/etiqueta")
+    public String etiqueta(@PathVariable Long id, Model model) {
+        model.addAttribute("material", materialService.buscar(id));
+        return "materiais/etiqueta";
+    }
+
+    /**
+     * Carrega áreas (para o primeiro select) e, se o material já tem
+     * subcategoria definida (caso de edição), as subcategorias da área dele —
+     * assim o segundo dropdown já vem preenchido sem precisar de AJAX.
+     */
+    private void prepararListasDoForm(Model model) {
+        model.addAttribute("areas", areaRepository.findAllByOrderByNomeAsc());
+        Material atual = (Material) model.asMap().get("material");
+        if (atual != null && atual.getSubcategoria() != null
+                && atual.getSubcategoria().getArea() != null) {
+            model.addAttribute("subcategorias",
+                    subcategoriaRepository.findByAreaIdOrderByNomeAsc(
+                            atual.getSubcategoria().getArea().getId()));
+        }
     }
 }

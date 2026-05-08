@@ -87,6 +87,47 @@ public class MovimentacaoService {
     }
 
     /**
+     * RF14/RN10 - Registra uma COMPRA DIRETA: o item foi comprado sob demanda
+     * para um setor específico e entregue diretamente, SEM passar pelo estoque
+     * geral do almoxarifado.
+     *
+     * Diferenças importantes em relação a ENTRADA/SAIDA:
+     *   - NÃO incrementa Material.estoqueAtual (não é ENTRADA);
+     *   - NÃO decrementa Material.estoqueAtual (não é SAIDA);
+     *   - Já nasce com status ENTREGUE (a mercadoria já foi repassada ao setor
+     *     no ato do recebimento — não há aprovação a fazer).
+     *
+     * Uso: este método é chamado pelo {@code CompraService} ao baixar uma
+     * Compra do tipo DIRETA. O setor de destino é obrigatório (RN08/RN10).
+     */
+    @Transactional
+    public Movimentacao registrarCompraDireta(Movimentacao mov) {
+        if (mov.getQuantidade() == null || mov.getQuantidade() <= 0) {
+            throw new IllegalArgumentException("Quantidade deve ser maior que zero.");
+        }
+        if (mov.getMaterial() == null || mov.getMaterial().getId() == null) {
+            throw new IllegalArgumentException("Material é obrigatório para compra direta.");
+        }
+        if (mov.getSetorDestino() == null || mov.getSetorDestino().getId() == null) {
+            throw new IllegalArgumentException(
+                    "RN10: O setor de destino é obrigatório em compra direta.");
+        }
+
+        // Resolve o material a partir do banco para obter referência gerenciada
+        // (não tocamos em estoqueAtual — é o ponto da compra direta).
+        Material material = materialRepository.findById(mov.getMaterial().getId())
+                .orElseThrow(() -> new IllegalArgumentException("Material não encontrado."));
+
+        mov.setMaterial(material);
+        mov.setTipo(TipoMovimentacao.COMPRA_DIRETA);
+        mov.setData(mov.getData() != null ? mov.getData() : LocalDateTime.now());
+        // Compra direta já chega entregue — não passa por aprovação.
+        mov.setStatus(StatusMovimentacao.ENTREGUE);
+
+        return movimentacaoRepository.save(mov);
+    }
+
+    /**
      * RN04 - Aprovação por gestor.
      * Quando o status muda para APROVADO ou ENTREGUE, o estoque do material é decrementado.
      * A transição PENDENTE_APROVACAO -> APROVADO/ENTREGUE só pode ocorrer uma vez (idempotência).

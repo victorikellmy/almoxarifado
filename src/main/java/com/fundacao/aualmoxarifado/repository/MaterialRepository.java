@@ -1,7 +1,7 @@
 package com.fundacao.aualmoxarifado.repository;
 
-import com.fundacao.aualmoxarifado.domain.Categoria;
 import com.fundacao.aualmoxarifado.domain.Material;
+import com.fundacao.aualmoxarifado.domain.Subcategoria;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -17,6 +17,6 @@ public interface MaterialRepository extends JpaRepository<Material, Long> {
            """)
     List<Material> findEmAlertaDeEstoque();
 
-    /** RN07 - usado para verificar se há materiais vinculados antes de excluir uma categoria. */
-    boolean existsByCategoria(Categoria categoria);
+    /** RN07 - usado pelo {@code SubcategoriaService.excluir} para barrar exclusões. */
+    boolean existsBySubcategoria(Subcategoria subcategoria);
 }

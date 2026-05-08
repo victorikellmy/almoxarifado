@@ -66,34 +66,11 @@ public class MovimentacaoController {
         }
     }
 
-    /** RF13 - Tela do formulário de Nova Entrada (abastecimento). */
-    @GetMapping("/entrada/nova")
-    public String novaEntrada(Model model) {
-        model.addAttribute("movimentacao", new Movimentacao());
-        model.addAttribute("materiais", materialRepository.findAll());
-        return "movimentacoes/entrada-form";
-    }
-
-    /**
-     * RF13 + RN05 - persiste a entrada e credita o estoque.
-     */
-    @PostMapping("/entrada")
-    public String salvarEntrada(@ModelAttribute Movimentacao movimentacao,
-                                @RequestParam(required = false) Long materialId,
-                                Model model) {
-        try {
-            if (materialId != null) {
-                movimentacao.setMaterial(materialRepository.findById(materialId).orElse(null));
-            }
-            movimentacaoService.registrarEntrada(movimentacao);
-            return "redirect:/movimentacoes";
-        } catch (RuntimeException ex) {
-            model.addAttribute("erro", ex.getMessage());
-            model.addAttribute("materiais", materialRepository.findAll());
-            model.addAttribute("movimentacao", movimentacao);
-            return "movimentacoes/entrada-form";
-        }
-    }
+    // RF13 - O lançamento manual de Entrada foi removido.
+    // Toda entrada de material no estoque agora ocorre exclusivamente através
+    // do Módulo de Compras (RF14): a baixa de uma Compra do tipo ESTOQUE chama
+    // MovimentacaoService.registrarEntrada para creditar o saldo (RN05/RN09).
+    // Veja: CompraService.baixarComoEntradaDeEstoque.
 
     /** RN04 - Aprovação/entrega por gestor (debita estoque). */
     @PostMapping("/{id}/status")

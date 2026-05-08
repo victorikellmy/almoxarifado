@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Recebimento de compra')}"></head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('compras-fila')}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout :: topbar('Recebimento de compra', 'Confirme NF, valor real e gere a baixa (RF15)')}"></header>
+
+        <div class="app-content">
+
+            <div class="alert alert-danger d-flex align-items-start gap-2" th:if="${erro}">
+                <i class="bi bi-exclamation-circle fs-5"></i>
+                <span th:text="${erro}"></span>
+            </div>
+
+            <!-- Aviso contextualizado conforme tipo da compra -->
+            <div class="alert d-flex align-items-start gap-2"
+                 th:classappend="${compra.tipo.name() == 'ESTOQUE'} ? 'alert-success' : 'alert-warning'">
+                <i class="bi fs-5"
+                   th:classappend="${compra.tipo.name() == 'ESTOQUE'} ? 'bi-boxes' : 'bi-arrow-right-circle'"></i>
+                <span th:if="${compra.tipo.name() == 'ESTOQUE'}">
+                    Os itens entram como <strong>ENTRADA</strong> e o saldo dos materiais será incrementado (RN09).
+                </span>
+                <span th:if="${compra.tipo.name() == 'DIRETA'}">
+                    Os itens serão registrados como <strong>COMPRA DIRETA</strong> e entregues ao setor
+                    <strong th:text="${compra.setorSolicitante.nome}"></strong> —
+                    <em>não entram no estoque geral</em> (RN10).
+                </span>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-pad">
+                    <h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.05em;">
+                        Resumo da pré-compra
+                    </h6>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-3 text-muted">Tipo</dt>
+                        <dd class="col-sm-9">
+                            <span class="badge bg-primary" th:if="${compra.tipo.name() == 'DIRETA'}">Direta</span>
+                            <span class="badge bg-secondary" th:if="${compra.tipo.name() == 'ESTOQUE'}">Estoque</span>
+                        </dd>
+                        <dt class="col-sm-3 text-muted">Setor solicitante</dt>
+                        <dd class="col-sm-9" th:text="${compra.setorSolicitante != null ? compra.setorSolicitante.nome : '—'}"></dd>
+                        <dt class="col-sm-3 text-muted">Fornecedor</dt>
+                        <dd class="col-sm-9" th:text="${compra.fornecedor} ?: '—'"></dd>
+                        <dt class="col-sm-3 text-muted">Valor estimado</dt>
+                        <dd class="col-sm-9" th:text="${#numbers.formatCurrency(compra.valorEstimado)}"></dd>
+                        <dt class="col-sm-3 text-muted">Itens</dt>
+                        <dd class="col-sm-9">
+                            <ul class="list-unstyled mb-0">
+                                <li th:each="i : ${compra.itens}">
+                                    <i class="bi bi-dot text-muted"></i>
+                                    <span th:text="${i.quantidade + ' × ' + i.material.nome}"></span>
+                                </li>
+                            </ul>
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <form th:action="@{|/compras/${compra.id}/baixa|}" method="post"
+                  enctype="multipart/form-data" class="card">
+                <div class="card-pad">
+                    <h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.05em;">
+                        Dados da baixa
+                    </h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Nº da nota fiscal *</label>
+                            <input type="text" name="numeroNF" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Valor real final (R$) *</label>
+                            <input type="number" name="valorRealFinal" step="0.01" min="0" class="form-control" required>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">PDF da nota fiscal <small class="text-muted">(RF16)</small></label>
+                            <input type="file" name="pdfNotaFiscal" accept="application/pdf" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check2-square"></i> Confirmar e baixar
+                        </button>
+                        <a th:href="@{|/compras/${compra.id}|}" class="btn btn-outline-secondary">Voltar</a>
+                    </div>
+                </div>
+            </form>
+
+        </div>
+    </main>
+</div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

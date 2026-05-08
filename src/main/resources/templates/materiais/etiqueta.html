@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Etiqueta')}"></head>
+<body>
+
+<!-- JsBarcode (CDN). Doc: https://github.com/lindell/JsBarcode -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+<style>
+    /* Modo impressão: derruba o shell todo e imprime só a etiqueta */
+    @media print {
+        .app-sidebar, .app-topbar, .no-print { display: none !important; }
+        .app-main { margin-left: 0 !important; }
+        .app-content { padding: 0 !important; }
+        body { background: white !important; }
+        .etiqueta-card { box-shadow: none !important; border: 1px dashed #999 !important; }
+    }
+</style>
+
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('materiais')}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout :: topbar('Etiqueta de produto', 'Código de barras pronto para impressão (RF18)')}"></header>
+
+        <div class="app-content">
+
+            <div class="d-flex gap-2 mb-3 no-print">
+                <button class="btn btn-primary" onclick="window.print()">
+                    <i class="bi bi-printer"></i> Imprimir
+                </button>
+                <a href="/materiais" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+
+            <div class="etiqueta-card card mx-auto" style="max-width: 480px;">
+                <div class="card-pad text-center">
+                    <div class="text-muted small text-uppercase" style="letter-spacing:.1em;">
+                        Fundação · Almoxarifado
+                    </div>
+                    <h4 class="my-3" th:text="${material.nome}"></h4>
+
+                    <div class="d-flex justify-content-center gap-2 mb-3">
+                        <span class="badge bg-primary" th:text="${material.subcategoria.area.sigla}"></span>
+                        <span class="badge bg-info" th:text="${material.subcategoria.sigla}"></span>
+                        <span class="text-muted small align-self-center"
+                              th:text="${material.subcategoria.area.nome + ' / ' + material.subcategoria.nome}"></span>
+                    </div>
+
+                    <svg id="barcode" th:attr="data-sku=${material.codigoSku}"></svg>
+
+                    <div class="mt-3 small text-muted">
+                        <i class="bi bi-rulers me-1"></i>
+                        <span th:text="${material.unidadeMedida} ?: '—'"></span>
+                        ·
+                        <i class="bi bi-box-seam me-1 ms-2"></i>
+                        Estoque atual: <strong th:text="${material.estoqueAtual}"></strong>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script>
+    (function () {
+        const svg = document.getElementById('barcode');
+        const sku = svg.getAttribute('data-sku');
+        JsBarcode(svg, sku, {
+            format: 'CODE128',
+            width: 2,
+            height: 80,
+            displayValue: true,
+            fontSize: 18,
+            margin: 8
+        });
+    })();
+</script>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>
