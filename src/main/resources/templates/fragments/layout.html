@@ -1,428 +1,420 @@
 <!DOCTYPE html>
 <html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
 <!--
-  Fragments compartilhados de layout (Thymeleaf).
-  Uso típico em uma página:
+  Fragments compartilhados de layout (Thymeleaf) — visual unificado com o
+  Gerenciador Patrimonial (Claude Design / Sidebar Edition).
 
-    <head th:replace="~{fragments/layout :: head('Materiais')}"></head>
-    <body>
-      <div class="app-shell">
-        <aside th:replace="~{fragments/layout :: sidebar('materiais')}"></aside>
-        <main class="app-main">
-          <header th:replace="~{fragments/layout :: topbar('Materiais', 'Catálogo do almoxarifado')}"></header>
-          <div class="app-content"> ... </div>
-        </main>
-      </div>
-      <th:block th:replace="~{fragments/layout :: scripts}"></th:block>
-    </body>
-
-  O fragmento sidebar(active) recebe a chave da página atual (ex.: 'materiais',
-  'compras') e marca o item correspondente como ativo.
+  API mantida para compatibilidade com as páginas atuais:
+    <head th:replace="~{fragments/layout :: head('Titulo')}"></head>
+    <aside th:replace="~{fragments/layout :: sidebar('chave')}"></aside>
+    <header th:replace="~{fragments/layout :: topbar('Titulo', 'Subtitulo')}"></header>
+    <th:block th:replace="~{fragments/layout :: scripts}"></th:block>
 -->
 
-<!-- ===== HEAD ===== -->
+<!-- ============================ HEAD ============================ -->
 <head th:fragment="head(titulo)">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title th:text="${titulo} + ' · Almoxarifado'">Almoxarifado</title>
 
-    <!-- Bootstrap 5 (mantém os componentes que já usamos) -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons (https://icons.getbootstrap.com) -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Inter — fonte tipográfica corporativa -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Favicon institucional -->
+    <link rel="icon" type="image/png" th:href="@{/images/logo-color-vert.png}"/>
+    <link rel="apple-touch-icon" th:href="@{/images/logo-color-vert.png}"/>
 
+    <!-- Google Fonts: Inter + JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap"
+          rel="stylesheet"/>
+
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          rel="stylesheet" crossorigin="anonymous"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+          rel="stylesheet"/>
+
+    <!-- CSS custom (Claude Design — compartilhado com o Patrimônio) -->
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
+
+    <!-- Aplica o tema antes do render para evitar flash -->
+    <script>
+        (function () {
+            var stored = localStorage.getItem('alm-theme');
+            var prefers = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', stored || prefers);
+
+            var sidebar = localStorage.getItem('alm-sidebar');
+            if (sidebar === 'collapsed') {
+                document.documentElement.classList.add('sidebar-collapsed');
+            }
+        })();
+    </script>
+
+    <!-- Compat layer: preserva o shell .app-shell / .app-main / .app-content
+         usado pelas páginas existentes, sobre o CSS do Patrimônio.
+         Também garante que a topbar comporte título + subtítulo. -->
     <style>
-        /* =====================================================================
-           Design tokens — paleta de cores, espaçamento e raios.
-           Centralizar aqui evita "mágica" espalhada nos templates.
-           ===================================================================== */
-        :root {
-            --brand: #4f46e5;            /* indigo-600 */
-            --brand-hover: #4338ca;
-            --brand-light: #eef2ff;
-            --bg-app: #f5f7fb;
-            --bg-card: #ffffff;
-            --bg-sidebar: #0f172a;       /* slate-900 */
-            --bg-sidebar-hover: #1e293b;
-            --bg-sidebar-active: #4f46e5;
-            --text-primary: #0f172a;
-            --text-muted: #64748b;
-            --text-sidebar: #cbd5e1;
-            --text-sidebar-muted: #64748b;
-            --border: #e5e7eb;
-            --border-strong: #cbd5e1;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --info: #0ea5e9;
-            --shadow-sm: 0 1px 2px rgba(15,23,42,.05);
-            --shadow-md: 0 4px 12px rgba(15,23,42,.06);
-            --radius: 10px;
-            --sidebar-w: 248px;
-        }
-
-        * { -webkit-font-smoothing: antialiased; }
-        html, body { height: 100%; }
-        body {
-            font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-            background: var(--bg-app);
-            color: var(--text-primary);
-            font-size: 14px;
-        }
-
-        h1, h2, h3, h4, h5, h6 { font-weight: 600; letter-spacing: -.01em; }
-
-        /* =====================================================================
-           Shell de duas colunas: sidebar fixo à esquerda + área principal
-           ===================================================================== */
-        .app-shell { display: flex; min-height: 100vh; }
-        .app-main {
-            flex: 1;
-            margin-left: var(--sidebar-w);
-            display: flex;
-            flex-direction: column;
-            min-width: 0;       /* permite que tabelas largas façam scroll */
-        }
+        .app-shell { min-height: 100vh; }
+        .app-main { display: flex; flex-direction: column; min-width: 0; }
         .app-content { padding: 1.75rem 2rem 2.5rem; }
+        @media (max-width: 991px) { .app-content { padding: 1rem; } }
 
-        /* =====================================================================
-           Sidebar
-           ===================================================================== */
-        .app-sidebar {
-            width: var(--sidebar-w);
-            background: var(--bg-sidebar);
-            color: var(--text-sidebar);
-            position: fixed;
-            top: 0; left: 0; bottom: 0;
-            display: flex;
-            flex-direction: column;
-            padding: 1.25rem 0;
-            z-index: 1000;
-        }
-        .sidebar-brand {
-            display: flex;
-            align-items: center;
-            gap: .65rem;
-            padding: 0 1.25rem 1.25rem;
-            border-bottom: 1px solid rgba(255,255,255,.06);
-            color: #fff;
-            text-decoration: none;
-        }
-        .sidebar-brand-logo {
-            width: 36px; height: 36px;
-            border-radius: 8px;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            display: grid; place-items: center;
-            color: #fff;
-            font-weight: 700;
-            font-size: 1.05rem;
-        }
-        .sidebar-brand-text { font-weight: 600; font-size: 1rem; line-height: 1.1; }
-        .sidebar-brand-text small { display: block; color: var(--text-sidebar-muted); font-weight: 400; font-size: .72rem; }
+        /* Override do app.css que empurrava o <main> 20px para baixo,
+           desalinhando a topbar do brand fixo da sidebar. */
+        body:has(.app-sidebar) main.app-main { padding-top: 0; }
 
-        .sidebar-section-title {
-            padding: 1rem 1.25rem .35rem;
-            font-size: .68rem;
-            text-transform: uppercase;
-            letter-spacing: .08em;
-            color: var(--text-sidebar-muted);
-            font-weight: 600;
-        }
-        .sidebar-nav { list-style: none; padding: 0; margin: 0; }
-        .sidebar-nav a {
-            display: flex;
-            align-items: center;
-            gap: .75rem;
-            padding: .55rem 1.25rem;
-            color: var(--text-sidebar);
-            text-decoration: none;
-            font-size: .875rem;
-            font-weight: 500;
-            border-left: 3px solid transparent;
-            transition: background .12s, color .12s, border-color .12s;
-        }
-        .sidebar-nav a i { font-size: 1rem; opacity: .9; width: 1.1em; }
-        .sidebar-nav a:hover { background: var(--bg-sidebar-hover); color: #fff; }
-        .sidebar-nav a.active {
-            color: #fff;
-            background: rgba(79,70,229,.12);
-            border-left-color: var(--brand);
-        }
-        .sidebar-foot {
-            margin-top: auto;
-            padding: 1rem 1.25rem;
-            border-top: 1px solid rgba(255,255,255,.06);
-            font-size: .75rem;
-            color: var(--text-sidebar-muted);
-        }
-
-        /* =====================================================================
-           Topbar (cabeçalho de cada página)
-           ===================================================================== */
-        .app-topbar {
-            background: #fff;
-            border-bottom: 1px solid var(--border);
-            padding: 1rem 2rem;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-        }
-        .app-topbar h1 { font-size: 1.15rem; margin: 0; font-weight: 600; }
-        .app-topbar .topbar-subtitle { color: var(--text-muted); font-size: .825rem; margin: 0; }
-
-        /* =====================================================================
-           Cards / superfícies
-           ===================================================================== */
-        .card {
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-sm);
-            background: var(--bg-card);
-        }
-        .card-pad { padding: 1.5rem; }
-
-        /* Stat card do dashboard */
+        /* ============ Stat cards (indicadores) ============ */
         .stat-card {
             display: flex;
             align-items: flex-start;
             gap: 1rem;
             padding: 1.25rem;
+            border-radius: 12px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            transition: box-shadow var(--transition), transform var(--transition), border-color var(--transition);
+            min-height: 100%;
         }
-        .stat-card .stat-icon {
-            width: 44px; height: 44px;
-            border-radius: 10px;
-            display: grid; place-items: center;
-            font-size: 1.25rem;
-            flex-shrink: 0;
+        a > .stat-card,
+        .hover-shadow:hover {
+            box-shadow: var(--shadow-2);
+            border-color: var(--border-hover, var(--primary-300));
         }
-        .stat-card .stat-icon.bg-brand { background: var(--brand-light); color: var(--brand); }
-        .stat-card .stat-icon.bg-warning-soft { background: #fef3c7; color: #b45309; }
-        .stat-card .stat-icon.bg-success-soft { background: #d1fae5; color: #047857; }
-        .stat-card .stat-icon.bg-info-soft { background: #e0f2fe; color: #0369a1; }
-        .stat-card .stat-icon.bg-danger-soft { background: #fee2e2; color: #b91c1c; }
-        .stat-card .stat-label { color: var(--text-muted); font-size: .8rem; margin: 0; }
-        .stat-card .stat-value { font-size: 1.6rem; font-weight: 700; line-height: 1.1; margin: .15rem 0 0; }
-        .stat-card .stat-hint { color: var(--text-muted); font-size: .75rem; margin: .25rem 0 0; }
+        a > .stat-card:hover { transform: translateY(-1px); }
 
-        /* =====================================================================
-           Tabelas
-           ===================================================================== */
-        .table-card { padding: 0; overflow: hidden; }
-        .table-card > .table-card-head {
+        .stat-card > div:last-child {
+            min-width: 0;
+            flex: 1;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 1.25rem;
-            border-bottom: 1px solid var(--border);
-            gap: 1rem;
+            flex-direction: column;
+            gap: .25rem;
         }
-        .table-card > .table-responsive { margin: 0; }
-        .table {
-            margin: 0;
-            font-size: .875rem;
-        }
-        .table > thead th {
-            background: #f8fafc;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            font-size: .68rem;
-            font-weight: 600;
-            letter-spacing: .05em;
-            border-bottom: 1px solid var(--border);
-            padding: .65rem 1rem;
-        }
-        .table > tbody > tr > td {
-            padding: .85rem 1rem;
-            border-color: var(--border);
-            vertical-align: middle;
-        }
-        .table > tbody > tr:hover { background: #f9fafb; }
-        .table.table-striped > tbody > tr:nth-of-type(odd) > * { background: transparent; } /* desativa zebra */
 
-        /* =====================================================================
-           Forms
-           ===================================================================== */
-        .form-label { font-size: .8rem; font-weight: 600; color: var(--text-primary); margin-bottom: .35rem; }
-        .form-control, .form-select {
-            border-radius: 8px;
-            border-color: var(--border);
-            font-size: .875rem;
-            padding: .5rem .75rem;
-        }
-        .form-control:focus, .form-select:focus {
-            border-color: var(--brand);
-            box-shadow: 0 0 0 3px rgba(79,70,229,.15);
-        }
-        .form-text { font-size: .75rem; color: var(--text-muted); }
-
-        /* =====================================================================
-           Botões
-           ===================================================================== */
-        .btn { font-weight: 500; border-radius: 8px; padding: .5rem 1rem; font-size: .875rem; }
-        .btn-sm { padding: .3rem .65rem; font-size: .78rem; }
-        .btn-primary { background: var(--brand); border-color: var(--brand); }
-        .btn-primary:hover, .btn-primary:focus { background: var(--brand-hover); border-color: var(--brand-hover); }
-        .btn-success { background: var(--success); border-color: var(--success); }
-        .btn-success:hover { background: #059669; border-color: #059669; }
-        .btn-warning { background: var(--warning); border-color: var(--warning); color: #fff; }
-        .btn-warning:hover { background: #d97706; border-color: #d97706; color: #fff; }
-        .btn-danger { background: var(--danger); border-color: var(--danger); }
-
-        /* =====================================================================
-           Badges
-           ===================================================================== */
-        .badge {
-            font-weight: 500;
-            font-size: .72rem;
-            padding: .35em .65em;
-            border-radius: 6px;
-        }
-        .badge.bg-success { background: #d1fae5 !important; color: #047857 !important; }
-        .badge.bg-danger { background: #fee2e2 !important; color: #b91c1c !important; }
-        .badge.bg-warning { background: #fef3c7 !important; color: #b45309 !important; }
-        .badge.bg-info { background: #e0f2fe !important; color: #0369a1 !important; }
-        .badge.bg-secondary { background: #f1f5f9 !important; color: #475569 !important; }
-        .badge.bg-primary { background: var(--brand-light) !important; color: var(--brand) !important; }
-
-        /* Status pill com bolinha */
-        .status-pill {
+        .stat-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
             display: inline-flex;
             align-items: center;
-            gap: .35rem;
+            justify-content: center;
+            font-size: 1.15rem;
+            flex-shrink: 0;
+        }
+        .stat-icon.bg-brand        { background: var(--primary-50);  color: var(--primary-700); }
+        .stat-icon.bg-warning-soft { background: var(--warning-bg);  color: var(--warning-fg); }
+        .stat-icon.bg-info-soft    { background: var(--info-bg);     color: var(--info-fg); }
+        .stat-icon.bg-success-soft { background: var(--success-bg);  color: var(--success-fg); }
+        [data-theme="dark"] .stat-icon.bg-brand {
+            background: rgba(39, 118, 173, 0.18);
+            color: var(--primary-300);
+        }
+
+        .stat-label {
+            margin: 0;
+            font-size: .78rem;
             font-weight: 500;
-            font-size: .75rem;
-            padding: .25rem .6rem;
-            border-radius: 999px;
-        }
-        .status-pill::before {
-            content: '';
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            background: currentColor;
-        }
-
-        /* =====================================================================
-           Alertas
-           ===================================================================== */
-        .alert {
-            border: 1px solid transparent;
-            border-radius: var(--radius);
-            font-size: .875rem;
-        }
-        .alert-warning { background: #fffbeb; border-color: #fde68a; color: #92400e; }
-        .alert-danger { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
-        .alert-success { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
-
-        /* =====================================================================
-           Page header (título + ações)
-           ===================================================================== */
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 1rem;
-            margin-bottom: 1.25rem;
-        }
-        .page-header h2 { font-size: 1.45rem; margin: 0; }
-        .page-header .page-subtitle { color: var(--text-muted); font-size: .875rem; margin: .25rem 0 0; }
-
-        /* Esconde sidebar em telas pequenas (sem implementar mobile drawer agora). */
-        @media (max-width: 768px) {
-            .app-sidebar { transform: translateX(-100%); transition: transform .2s; }
-            .app-main { margin-left: 0; }
-            .app-content { padding: 1rem; }
-            .app-topbar { padding: 1rem; }
-        }
-
-        /* Empty state das tabelas */
-        .empty-state {
-            text-align: center;
             color: var(--text-muted);
-            padding: 2rem 1rem;
+            text-transform: uppercase;
+            letter-spacing: .03em;
+            line-height: 1.2;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        .empty-state i { font-size: 1.6rem; opacity: .55; }
+        .stat-value {
+            margin: 0;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.1;
+            letter-spacing: -.02em;
+            font-variant-numeric: tabular-nums;
+        }
+        .stat-hint {
+            margin: 0;
+            font-size: .78rem;
+            color: var(--text-muted);
+            line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .stat-hint a { color: var(--primary-600); font-weight: 500; }
 
-        code { color: var(--text-primary); background: #f1f5f9; padding: .12em .45em; border-radius: 4px; font-size: .82em; }
+        /* Card padding helper usado pelas seções */
+        .card-pad { padding: 1.25rem 1.5rem; }
+        .hover-shadow { transition: box-shadow var(--transition), transform var(--transition); }
+        .hover-shadow:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); }
+        .min-w-0 { min-width: 0; }
+
+        /* Topbar com título + subtítulo — altura travada na mesma do brand
+           da sidebar (var(--topbar-h)) para alinhar visualmente com o logo. */
+        .app-topbar {
+            height: var(--topbar-h);
+            min-height: var(--topbar-h);
+            max-height: var(--topbar-h);
+            padding: 0 1.5rem;
+        }
+        .app-topbar .topbar-page-title {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            line-height: 1.15;
+            min-width: 0;
+        }
+        .app-topbar .topbar-page-title h1 {
+            font-size: 1rem;
+            margin: 0;
+            font-weight: 600;
+            letter-spacing: -.01em;
+            color: var(--text-primary);
+        }
+        .app-topbar .topbar-page-title p {
+            margin: 2px 0 0;
+            font-size: .75rem;
+            color: var(--text-muted);
+            line-height: 1.1;
+        }
     </style>
 </head>
 
-<!-- ===== SIDEBAR ===== -->
-<aside th:fragment="sidebar(ativo)" class="app-sidebar">
-    <a class="sidebar-brand" href="/">
-        <span class="sidebar-brand-logo">A</span>
-        <span class="sidebar-brand-text">
-            Almoxarifado
-            <small>Fundação · 2025</small>
-        </span>
-    </a>
+<!-- ============================ SIDEBAR ============================ -->
+<aside th:fragment="sidebar(ativo)" class="app-sidebar" id="appSidebar" aria-label="Navegação principal">
+    <div class="sidebar-brand">
+        <a class="sidebar-brand-link" th:href="@{/}">
+            <img th:src="@{/images/logo-color.png}" alt="Fundação Pró-Tocantins"
+                 class="sidebar-brand-logo sidebar-brand-logo-light"/>
+            <img th:src="@{/images/logo-white.png}" alt="Fundação Pró-Tocantins"
+                 class="sidebar-brand-logo sidebar-brand-logo-dark"/>
+            <span class="sidebar-brand-mark-collapsed" aria-hidden="true">
+                <i class="bi bi-box-seam"></i>
+            </span>
+            <span class="sidebar-brand-text">
+                <span class="sidebar-brand-title">Almoxarifado</span>
+            </span>
+        </a>
+        <button type="button" class="sidebar-collapse-btn d-none d-lg-inline-flex"
+                id="sidebarCollapseBtn"
+                title="Recolher menu" aria-label="Recolher menu">
+            <i class="bi bi-chevron-double-left"></i>
+        </button>
+    </div>
 
-    <div class="sidebar-section-title">Visão geral</div>
-    <ul class="sidebar-nav">
-        <li><a href="/" th:classappend="${ativo == 'home'} ? 'active'">
-            <i class="bi bi-grid-1x2"></i> Dashboard</a></li>
-    </ul>
+    <nav class="sidebar-nav">
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Visão geral</div>
+            <a class="sidebar-link" th:classappend="${ativo == 'home'} ? 'active'" th:href="@{/}">
+                <i class="bi bi-speedometer2"></i>
+                <span class="sidebar-link-label">Dashboard</span>
+            </a>
+        </div>
 
-    <div class="sidebar-section-title">Catálogo</div>
-    <ul class="sidebar-nav">
-        <li><a href="/areas" th:classappend="${ativo == 'areas'} ? 'active'">
-            <i class="bi bi-diagram-3"></i> Áreas</a></li>
-        <li><a href="/subcategorias" th:classappend="${ativo == 'subcategorias'} ? 'active'">
-            <i class="bi bi-tags"></i> Subcategorias</a></li>
-        <li><a href="/materiais" th:classappend="${ativo == 'materiais'} ? 'active'">
-            <i class="bi bi-box-seam"></i> Materiais</a></li>
-        <li><a href="/setores" th:classappend="${ativo == 'setores'} ? 'active'">
-            <i class="bi bi-building"></i> Setores</a></li>
-    </ul>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Catálogo</div>
+            <a class="sidebar-link" th:classappend="${ativo == 'areas'} ? 'active'" th:href="@{/areas}">
+                <i class="bi bi-diagram-3"></i>
+                <span class="sidebar-link-label">Áreas</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'subcategorias'} ? 'active'" th:href="@{/subcategorias}">
+                <i class="bi bi-tags"></i>
+                <span class="sidebar-link-label">Subcategorias</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'materiais'} ? 'active'" th:href="@{/materiais}">
+                <i class="bi bi-box-seam"></i>
+                <span class="sidebar-link-label">Materiais</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'setores'} ? 'active'" th:href="@{/setores}">
+                <i class="bi bi-building"></i>
+                <span class="sidebar-link-label">Setores</span>
+            </a>
+        </div>
 
-    <div class="sidebar-section-title">Operações</div>
-    <ul class="sidebar-nav">
-        <li><a href="/compras" th:classappend="${ativo == 'compras'} ? 'active'">
-            <i class="bi bi-cart3"></i> Compras</a></li>
-        <li><a href="/compras/aguardando" th:classappend="${ativo == 'compras-fila'} ? 'active'">
-            <i class="bi bi-hourglass-split"></i> Fila de compras</a></li>
-        <li><a href="/movimentacoes" th:classappend="${ativo == 'movimentacoes'} ? 'active'">
-            <i class="bi bi-arrow-left-right"></i> Movimentações</a></li>
-        <li><a href="/movimentacoes/saida/nova" th:classappend="${ativo == 'saida-nova'} ? 'active'">
-            <i class="bi bi-box-arrow-up"></i> Nova saída</a></li>
-    </ul>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Operações</div>
+            <a class="sidebar-link" th:classappend="${ativo == 'compras'} ? 'active'" th:href="@{/compras}">
+                <i class="bi bi-cart3"></i>
+                <span class="sidebar-link-label">Compras</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'compras-fila'} ? 'active'" th:href="@{/compras/aguardando}">
+                <i class="bi bi-hourglass-split"></i>
+                <span class="sidebar-link-label">Fila de compras</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'movimentacoes'} ? 'active'" th:href="@{/movimentacoes}">
+                <i class="bi bi-arrow-left-right"></i>
+                <span class="sidebar-link-label">Movimentações</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'saida-nova'} ? 'active'" th:href="@{/movimentacoes/saida/nova}">
+                <i class="bi bi-box-arrow-up"></i>
+                <span class="sidebar-link-label">Nova saída</span>
+            </a>
+        </div>
 
-    <div class="sidebar-section-title">Relatórios</div>
-    <ul class="sidebar-nav">
-        <li><a href="/movimentacoes/relatorio/consumo-setor"
-               th:classappend="${ativo == 'rel-consumo'} ? 'active'">
-            <i class="bi bi-bar-chart"></i> Consumo por setor</a></li>
-    </ul>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Relatórios</div>
+            <a class="sidebar-link" th:classappend="${ativo == 'rel-consumo'} ? 'active'"
+               th:href="@{/movimentacoes/relatorio/consumo-setor}">
+                <i class="bi bi-bar-chart"></i>
+                <span class="sidebar-link-label">Consumo por setor</span>
+            </a>
+        </div>
+    </nav>
 
-    <div class="sidebar-foot">
-        <i class="bi bi-shield-check me-1"></i> Sessão segura
+    <div class="sidebar-footer">
+        <div class="sidebar-user">
+            <span class="nav-avatar">A</span>
+            <div class="sidebar-user-info">
+                <span class="sidebar-user-name">Almoxarifado</span>
+                <span class="sidebar-user-role">Fundação · 2025</span>
+            </div>
+        </div>
     </div>
 </aside>
 
-<!-- ===== TOPBAR ===== -->
+<!-- Backdrop para mobile drawer (renderizado junto da sidebar) -->
+<div th:fragment="sidebarBackdrop" class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+
+<!-- ============================ TOPBAR ============================ -->
 <header th:fragment="topbar(titulo, subtitulo)" class="app-topbar">
-    <div>
+    <button type="button" class="topbar-icon-btn d-lg-none" id="sidebarOpenBtn"
+            aria-label="Abrir menu" title="Abrir menu">
+        <i class="bi bi-list"></i>
+    </button>
+    <button type="button" class="topbar-icon-btn d-none d-lg-inline-flex" id="sidebarToggleBtn"
+            aria-label="Alternar menu" title="Alternar menu">
+        <i class="bi bi-layout-sidebar"></i>
+    </button>
+
+    <div class="topbar-page-title">
         <h1 th:text="${titulo}">Página</h1>
-        <p class="topbar-subtitle" th:text="${subtitulo}" th:if="${subtitulo}"></p>
+        <p th:if="${subtitulo}" th:text="${subtitulo}"></p>
     </div>
-    <div class="d-flex align-items-center gap-2">
-        <span class="text-muted small d-none d-md-inline">
-            <i class="bi bi-calendar3 me-1"></i>
-            <span th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy')}"></span>
-        </span>
-    </div>
+
+    <div class="topbar-spacer"></div>
+
+    <span class="text-muted small d-none d-md-inline">
+        <i class="bi bi-calendar3 me-1"></i>
+        <span th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy')}"></span>
+    </span>
+
+    <div class="topbar-divider d-none d-md-block"></div>
+
+    <button type="button" class="topbar-icon-btn theme-toggle" id="themeToggleBtn"
+            title="Alternar tema claro/escuro" aria-label="Alternar tema">
+        <i class="bi bi-moon-stars" id="themeIconDark"></i>
+        <i class="bi bi-sun" id="themeIconLight" style="display:none"></i>
+    </button>
 </header>
 
-<!-- ===== SCRIPTS ===== -->
+<!-- ============================ FLASH MESSAGES ============================ -->
+<div th:fragment="messages">
+    <div class="toast-container" th:if="${sucesso != null or erro != null}">
+        <div th:if="${sucesso}" class="toast-modern toast-success" role="alert" data-toast-autohide="4000">
+            <div class="toast-icon"><i class="bi bi-check-lg"></i></div>
+            <div class="toast-body-modern">
+                <div class="toast-title">Sucesso</div>
+                <div class="toast-desc" th:text="${sucesso}">Operação realizada.</div>
+            </div>
+            <button type="button" class="toast-close" aria-label="Fechar">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div th:if="${erro}" class="toast-modern toast-danger" role="alert" data-toast-autohide="6000">
+            <div class="toast-icon"><i class="bi bi-exclamation-triangle"></i></div>
+            <div class="toast-body-modern">
+                <div class="toast-title">Atenção</div>
+                <div class="toast-desc" th:text="${erro}">Erro.</div>
+            </div>
+            <button type="button" class="toast-close" aria-label="Fechar">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================ SCRIPTS ============================ -->
 <th:block th:fragment="scripts">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Backdrop drawer mobile (injetado aqui para não poluir o body das pages) -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+            crossorigin="anonymous"></script>
+
+    <script>
+        // ---------- Theme toggle ----------
+        (function () {
+            const btn = document.getElementById('themeToggleBtn');
+            if (!btn) return;
+            const iconDark = document.getElementById('themeIconDark');
+            const iconLight = document.getElementById('themeIconLight');
+            const sync = () => {
+                const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+                iconDark.style.display = dark ? 'none' : '';
+                iconLight.style.display = dark ? '' : 'none';
+            };
+            sync();
+            btn.addEventListener('click', () => {
+                const current = document.documentElement.getAttribute('data-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('alm-theme', next);
+                sync();
+            });
+        })();
+
+        // ---------- Sidebar: collapse desktop + drawer mobile ----------
+        (function () {
+            const root = document.documentElement;
+            const sidebar = document.getElementById('appSidebar');
+            const backdrop = document.getElementById('sidebarBackdrop');
+            const openBtn = document.getElementById('sidebarOpenBtn');
+            const toggleBtn = document.getElementById('sidebarToggleBtn');
+            const collapseBtn = document.getElementById('sidebarCollapseBtn');
+
+            const toggleCollapsed = () => {
+                root.classList.toggle('sidebar-collapsed');
+                localStorage.setItem('alm-sidebar',
+                    root.classList.contains('sidebar-collapsed') ? 'collapsed' : 'expanded');
+            };
+
+            const openMobile = () => {
+                sidebar?.classList.add('is-open');
+                backdrop?.classList.add('is-visible');
+                document.body.style.overflow = 'hidden';
+            };
+            const closeMobile = () => {
+                sidebar?.classList.remove('is-open');
+                backdrop?.classList.remove('is-visible');
+                document.body.style.overflow = '';
+            };
+
+            openBtn?.addEventListener('click', openMobile);
+            backdrop?.addEventListener('click', closeMobile);
+            toggleBtn?.addEventListener('click', toggleCollapsed);
+            collapseBtn?.addEventListener('click', toggleCollapsed);
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && sidebar?.classList.contains('is-open')) closeMobile();
+            });
+            window.addEventListener('resize', () => {
+                if (window.innerWidth >= 992) closeMobile();
+            });
+        })();
+
+        // ---------- Toasts: auto-hide + fechar ----------
+        (function () {
+            document.querySelectorAll('.toast-modern').forEach((toast) => {
+                const delay = parseInt(toast.dataset.toastAutohide || '0', 10);
+                const close = () => {
+                    toast.style.opacity = '0';
+                    toast.style.transform = 'translateX(20px)';
+                    toast.style.transition = 'all 200ms ease-out';
+                    setTimeout(() => toast.remove(), 200);
+                };
+                toast.querySelector('.toast-close')?.addEventListener('click', close);
+                if (delay > 0) setTimeout(close, delay);
+            });
+        })();
+    </script>
 </th:block>
 
 </html>
