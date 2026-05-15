@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Usuário')}"></head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('usuarios')}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout ::
+                              topbar(${usuario != null} ? 'Editar usuário' : 'Novo usuário',
+                                     'Cadastro de operador/administrador')}"></header>
+
+        <div class="app-content">
+            <form th:action="${usuario != null} ? @{|/usuarios/${usuario.id}|} : @{/usuarios}"
+                  th:object="${form}" method="post" class="card">
+                <div class="card-pad">
+
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Nome completo *</label>
+                            <input type="text" class="form-control" th:field="*{nomeCompleto}" required>
+                            <div class="invalid-feedback d-block" th:if="${#fields.hasErrors('nomeCompleto')}"
+                                 th:errors="*{nomeCompleto}"></div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Login *</label>
+                            <input type="text" class="form-control" th:field="*{login}"
+                                   th:readonly="${usuario != null}" required>
+                            <div class="invalid-feedback d-block" th:if="${#fields.hasErrors('login')}"
+                                 th:errors="*{login}"></div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.05em;">
+                        Acesso
+                    </h6>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">
+                                Senha
+                                <span class="text-muted small" th:if="${usuario != null}">
+                                    (deixe em branco para manter a atual)
+                                </span>
+                            </label>
+                            <input type="password" class="form-control" th:field="*{senha}"
+                                   th:required="${usuario == null}" autocomplete="new-password">
+                            <div class="invalid-feedback d-block" th:if="${#fields.hasErrors('senha')}"
+                                 th:errors="*{senha}"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Perfil *</label>
+                            <select class="form-select" th:field="*{perfil}">
+                                <option th:each="p : ${perfis}" th:value="${p}" th:text="${p}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 form-check ms-3 mt-md-4">
+                            <input class="form-check-input" type="checkbox" th:field="*{ativo}" id="ckAtivo">
+                            <label class="form-check-label" for="ckAtivo">Ativo</label>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex gap-2">
+                        <button class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar</button>
+                        <a th:href="@{/usuarios}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

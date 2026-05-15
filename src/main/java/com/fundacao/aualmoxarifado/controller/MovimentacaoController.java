@@ -1,19 +1,23 @@
 package com.fundacao.aualmoxarifado.controller;
 
-import com.fundacao.aualmoxarifado.domain.Movimentacao;
+import com.fundacao.aualmoxarifado.domain.Setor;
 import com.fundacao.aualmoxarifado.domain.StatusMovimentacao;
 import com.fundacao.aualmoxarifado.repository.MaterialRepository;
 import com.fundacao.aualmoxarifado.repository.SetorRepository;
 import com.fundacao.aualmoxarifado.service.MovimentacaoService;
+import com.fundacao.aualmoxarifado.service.MovimentacaoService.LinhaItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Controller
 @RequestMapping("/movimentacoes")
@@ -24,16 +28,23 @@ public class MovimentacaoController {
     private final MaterialRepository materialRepository;
     private final SetorRepository setorRepository;
 
+    // ---------- Listagem ----------
     @GetMapping
     public String listar(Model model) {
         model.addAttribute("movimentacoes", movimentacaoService.listarTodas());
         return "movimentacoes/lista";
     }
 
-    /** Tela do formulário de Nova Saída (RF06). */
+    /** Detalhe da movimentação — mostra a lista de itens enviados. */
+    @GetMapping("/{id}")
+    public String detalhar(@PathVariable Long id, Model model) {
+        model.addAttribute("movimentacao", movimentacaoService.buscar(id));
+        return "movimentacoes/detalhes";
+    }
+
+    // ---------- Saída multi-item (RF06) ----------
     @GetMapping("/saida/nova")
     public String novaSaida(Model model) {
-        model.addAttribute("movimentacao", new Movimentacao());
         model.addAttribute("materiais", materialRepository.findAll());
         model.addAttribute("setores", setorRepository.findAll());
         return "movimentacoes/saida-form";
@@ -41,41 +52,49 @@ public class MovimentacaoController {
 
     /**
      * Persiste a saída.
-     * RN03 é validada no Service e devolve mensagem de erro caso o setor seja nulo.
+     *
+     * <p>Recebe arrays paralelos {@code materialIds[]} e {@code quantidades[]}
+     * vindos do form dinâmico — cada índice é uma linha de item.</p>
      */
     @PostMapping("/saida")
-    public String salvarSaida(@ModelAttribute Movimentacao movimentacao,
-                              Model model, @RequestParam(required = false) Long setorId,
-                              @RequestParam(required = false) Long materialId) {
+    public String salvarSaida(@RequestParam Long setorId,
+                              @RequestParam(required = false) String retiradoPor,
+                              @RequestParam(required = false) String observacao,
+                              @RequestParam(name = "materialIds", required = false) List<Long> materialIds,
+                              @RequestParam(name = "quantidades", required = false) List<Integer> quantidades,
+                              RedirectAttributes ra,
+                              Model model) {
         try {
-            // Wiring de IDs vindos do form
-            if (setorId != null) {
-                movimentacao.setSetorDestino(setorRepository.findById(setorId).orElse(null));
-            }
-            if (materialId != null) {
-                movimentacao.setMaterial(materialRepository.findById(materialId).orElse(null));
-            }
-            movimentacaoService.registrarSaida(movimentacao);
-            return "redirect:/movimentacoes";
+            Setor setor = setorRepository.findById(setorId)
+                    .orElseThrow(() -> new IllegalArgumentException("Setor não encontrado."));
+            List<LinhaItem> linhas = construirLinhas(materialIds, quantidades);
+            var mov = movimentacaoService.registrarSaida(setor, retiradoPor, observacao, linhas);
+            ra.addFlashAttribute("sucesso",
+                    "Saída registrada com " + linhas.size() + " item(ns) — aguardando aprovação.");
+            return "redirect:/movimentacoes/" + mov.getId();
         } catch (RuntimeException ex) {
             model.addAttribute("erro", ex.getMessage());
             model.addAttribute("materiais", materialRepository.findAll());
             model.addAttribute("setores", setorRepository.findAll());
-            model.addAttribute("movimentacao", movimentacao);
+            // devolve os valores digitados para o usuário não perder tudo
+            model.addAttribute("setorIdSelecionado", setorId);
+            model.addAttribute("retiradoPorInformado", retiradoPor);
+            model.addAttribute("observacaoInformada", observacao);
+            model.addAttribute("materialIdsInformados", materialIds);
+            model.addAttribute("quantidadesInformadas", quantidades);
             return "movimentacoes/saida-form";
         }
     }
 
-    // RF13 - O lançamento manual de Entrada foi removido.
-    // Toda entrada de material no estoque agora ocorre exclusivamente através
-    // do Módulo de Compras (RF14): a baixa de uma Compra do tipo ESTOQUE chama
-    // MovimentacaoService.registrarEntrada para creditar o saldo (RN05/RN09).
-    // Veja: CompraService.baixarComoEntradaDeEstoque.
+    // RF13 - Lançamento manual de Entrada removido (vide CompraService).
 
-    /** RN04 - Aprovação/entrega por gestor (debita estoque). */
+    /** RN04 - Aprovação/entrega por gestor (debita estoque de todos os itens). */
     @PostMapping("/{id}/status")
-    public String alterarStatus(@PathVariable Long id, @RequestParam StatusMovimentacao status) {
+    public String alterarStatus(@PathVariable Long id,
+                                @RequestParam StatusMovimentacao status,
+                                RedirectAttributes ra) {
         movimentacaoService.alterarStatus(id, status);
+        ra.addFlashAttribute("sucesso", "Status atualizado para " + status + ".");
         return "redirect:/movimentacoes";
     }
 
@@ -97,5 +116,26 @@ public class MovimentacaoController {
         model.addAttribute("fim", fimEfetivo);
         model.addAttribute("consumos", resultado);
         return "relatorios/consumo-setor";
+    }
+
+    // ---------- helpers ----------
+    private static List<LinhaItem> construirLinhas(List<Long> materialIds, List<Integer> quantidades) {
+        if (materialIds == null || materialIds.isEmpty()) {
+            throw new IllegalArgumentException("Adicione ao menos um item à saída.");
+        }
+        if (quantidades == null || quantidades.size() != materialIds.size()) {
+            throw new IllegalArgumentException("Cada item precisa de uma quantidade.");
+        }
+        List<LinhaItem> linhas = new ArrayList<>(materialIds.size());
+        for (int i = 0; i < materialIds.size(); i++) {
+            Long matId = materialIds.get(i);
+            Integer qty = quantidades.get(i);
+            if (matId == null || qty == null) continue;     // linha em branco — ignora
+            linhas.add(new LinhaItem(matId, qty));
+        }
+        if (linhas.isEmpty()) {
+            throw new IllegalArgumentException("Nenhum item válido informado.");
+        }
+        return linhas;
     }
 }

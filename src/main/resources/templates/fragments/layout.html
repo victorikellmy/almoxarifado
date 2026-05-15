@@ -175,6 +175,75 @@
             color: var(--text-muted);
             line-height: 1.1;
         }
+
+        /* ============ Legibilidade no modo escuro ============
+           O esquema padrão do app.css usa um text-muted muito apagado em tons
+           médios. No tema escuro, isso reduz drasticamente o contraste com o
+           fundo (#0f172a ~ #050a14). Os overrides abaixo elevam a luminância
+           dos textos secundários e dos códigos/dashes sem mexer no tema claro. */
+        [data-theme="dark"] {
+            --text-muted: #94a3b8;          /* slate-400  (≈ AAA em fundos #0f172a) */
+        }
+        [data-theme="dark"] .text-muted,
+        [data-theme="dark"] .text-muted.small,
+        [data-theme="dark"] small.text-muted,
+        [data-theme="dark"] .form-text {
+            color: #94a3b8 !important;
+        }
+        [data-theme="dark"] .table {
+            color: #e2e8f0;                  /* slate-200 — texto base */
+        }
+        [data-theme="dark"] .table thead th {
+            color: #cbd5e1;                  /* slate-300 */
+            background: #1e293b;
+            border-bottom-color: #334155;
+        }
+        [data-theme="dark"] .table tbody td.text-muted {
+            color: #cbd5e1 !important;       /* mais legível que slate-400 */
+        }
+        [data-theme="dark"] code {
+            color: #93c5fd;                  /* azul-claro nice */
+            background: rgba(148,163,184,.10);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        [data-theme="dark"] .table tbody tr:hover {
+            background: rgba(148,163,184,.07);
+        }
+        /* Em-dash placeholders ("—") usados onde não há valor — uma cor própria
+           torna claro que é "vazio" sem desaparecer. */
+        [data-theme="dark"] .placeholder-dash {
+            color: #64748b !important;       /* slate-500 */
+        }
+        /* Status pills (.status-pill) — garante contraste em ambos os temas. */
+        .status-pill {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: .72rem;
+            font-weight: 600;
+            letter-spacing: .03em;
+        }
+        [data-theme="dark"] .status-pill {
+            filter: brightness(1.05) saturate(1.1);
+        }
+        /* Badges informativos — no escuro, eleva levemente o contraste. */
+        [data-theme="dark"] .badge.bg-secondary {
+            background: #475569 !important;
+            color: #e2e8f0;
+        }
+        [data-theme="dark"] .empty-state {
+            color: #94a3b8;
+        }
+        [data-theme="dark"] .form-control,
+        [data-theme="dark"] .form-select {
+            color: #e2e8f0;
+        }
+        /* Headers/títulos de seções */
+        [data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3,
+        [data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6 {
+            color: #f1f5f9;                  /* slate-100 */
+        }
     </style>
 </head>
 

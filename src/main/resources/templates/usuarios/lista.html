@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Usuários')}"></head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('usuarios')}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout :: topbar('Usuários', 'Operadores e administradores do sistema')}"></header>
+
+        <div class="app-content">
+            <div class="page-header">
+                <div></div>
+                <a th:href="@{/usuarios/novo}" class="btn btn-primary">
+                    <i class="bi bi-plus-lg"></i> Novo usuário
+                </a>
+            </div>
+
+            <div class="card table-card">
+                <div class="table-card-head">
+                    <div>
+                        <h5 class="mb-0">Lista de usuários</h5>
+                        <small class="text-muted"><span th:text="${#lists.size(usuarios)}"></span> registro(s)</small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Nome</th>
+                            <th>Login</th>
+                            <th>Perfil</th>
+                            <th>Status</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="u : ${usuarios}">
+                            <td class="text-muted" th:text="${u.id}"></td>
+                            <td class="fw-semibold" th:text="${u.nomeCompleto}"></td>
+                            <td><code th:text="${u.login}"></code></td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${u.perfil.name() == 'ADMINISTRADOR'} ? 'bg-primary' : 'bg-secondary'"
+                                      th:text="${u.perfil}"></span>
+                            </td>
+                            <td>
+                                <span th:if="${u.ativo}" class="status-pill text-success"
+                                      style="background:#d1fae5;">Ativo</span>
+                                <span th:unless="${u.ativo}" class="status-pill text-secondary"
+                                      style="background:#e5e7eb;">Inativo</span>
+                            </td>
+                            <td class="text-end">
+                                <a th:href="@{|/usuarios/${u.id}/editar|}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(usuarios)}">
+                            <td colspan="6" class="empty-state">
+                                <i class="bi bi-people d-block mb-2"></i>
+                                Nenhum usuário cadastrado.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

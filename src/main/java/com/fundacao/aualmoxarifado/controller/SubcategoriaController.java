@@ -22,10 +22,18 @@ public class SubcategoriaController {
     private final SubcategoriaService subcategoriaService;
     private final AreaRepository areaRepository;
 
+    /**
+     * Lista todas as subcategorias. Aceita filtro opcional por área
+     * ({@code ?areaId=}) que, quando informado, restringe a listagem.
+     */
     @GetMapping
-    public String listar(Model model) {
-        model.addAttribute("subcategorias", subcategoriaService.listar());
+    public String listar(@RequestParam(required = false) Long areaId, Model model) {
+        var subs = (areaId != null)
+                ? subcategoriaService.listarPorArea(areaId)
+                : subcategoriaService.listar();
+        model.addAttribute("subcategorias", subs);
         model.addAttribute("areas", areaRepository.findAllByOrderByNomeAsc());
+        model.addAttribute("areaSelecionada", areaId);
         if (!model.containsAttribute("subcategoria")) {
             model.addAttribute("subcategoria", new Subcategoria());
         }
@@ -55,6 +63,28 @@ public class SubcategoriaController {
     public String excluir(@PathVariable Long id, RedirectAttributes ra) {
         try {
             subcategoriaService.excluir(id);
+        } catch (RuntimeException ex) {
+            ra.addFlashAttribute("erro", ex.getMessage());
+        }
+        return "redirect:/subcategorias";
+    }
+
+    /** Tela de edição (apenas nome + descrição — sigla/área imutáveis). */
+    @GetMapping("/{id}/editar")
+    public String editar(@PathVariable Long id, Model model) {
+        Subcategoria sub = subcategoriaService.buscar(id);
+        model.addAttribute("subcategoria", sub);
+        return "subcategorias/form";
+    }
+
+    @PostMapping("/{id}")
+    public String atualizar(@PathVariable Long id,
+                            @RequestParam String nome,
+                            @RequestParam(required = false) String descricao,
+                            RedirectAttributes ra) {
+        try {
+            subcategoriaService.editar(id, nome, descricao);
+            ra.addFlashAttribute("sucesso", "Subcategoria atualizada.");
         } catch (RuntimeException ex) {
             ra.addFlashAttribute("erro", ex.getMessage());
         }

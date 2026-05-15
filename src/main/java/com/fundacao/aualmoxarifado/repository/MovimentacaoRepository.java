@@ -14,20 +14,23 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
     /**
      * RF10 - Relatório de Consumo por Setor.
      *
-     * Conta como "consumo do setor" toda movimentação destinada ao setor que
-     * tenha efetivamente saído do almoxarifado, ou seja:
-     *   - SAÍDAs já APROVADAS ou ENTREGUES (RN04);
-     *   - COMPRAS DIRETAS (RN10) — sempre entram como ENTREGUE.
+     * <p>Soma as quantidades dos <b>itens</b> ({@code MovimentacaoItem}) das
+     * movimentações destinadas ao setor que efetivamente saíram do almoxarifado:</p>
+     * <ul>
+     *   <li>SAÍDAs já APROVADAS ou ENTREGUES (RN04);</li>
+     *   <li>COMPRAS DIRETAS (RN10) — sempre entram como ENTREGUE.</li>
+     * </ul>
      *
-     * Compras DIRETAS contam aqui mesmo sem passar pelo estoque geral porque,
+     * <p>Compras DIRETAS contam aqui mesmo sem passar pelo estoque geral porque,
      * do ponto de vista do setor, a mercadoria foi adquirida e consumida via
-     * almoxarifado.
+     * almoxarifado.</p>
      */
     @Query("""
            SELECT new com.fundacao.aualmoxarifado.dto.ConsumoSetorDTO(
-                  s.id, s.nome, s.codigoCentroCusto, SUM(m.quantidade))
+                  s.id, s.nome, s.codigoCentroCusto, SUM(i.quantidade))
            FROM Movimentacao m
            JOIN m.setorDestino s
+           JOIN m.itens i
            WHERE (
                    (m.tipo = com.fundacao.aualmoxarifado.domain.TipoMovimentacao.SAIDA
                     AND m.status IN (com.fundacao.aualmoxarifado.domain.StatusMovimentacao.APROVADO,
@@ -36,7 +39,7 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
                  )
              AND m.data BETWEEN :inicio AND :fim
            GROUP BY s.id, s.nome, s.codigoCentroCusto
-           ORDER BY SUM(m.quantidade) DESC
+           ORDER BY SUM(i.quantidade) DESC
            """)
     List<ConsumoSetorDTO> consumoPorSetor(@Param("inicio") LocalDateTime inicio,
                                           @Param("fim") LocalDateTime fim);

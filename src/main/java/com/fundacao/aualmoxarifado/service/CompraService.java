@@ -191,32 +191,30 @@ public class CompraService {
     }
 
     /**
-     * RN09 - Para Compra ESTOQUE: cada item gera uma ENTRADA no
-     * MovimentacaoService, que por sua vez incrementa {@code Material.estoqueAtual}.
+     * RN09 - Para Compra ESTOQUE: agrupa todos os itens em UMA ENTRADA multi-item
+     * (uma NF, vários materiais) e delega ao MovimentacaoService, que credita o
+     * saldo de cada material na mesma transação.
      */
     private void baixarComoEntradaDeEstoque(Compra compra) {
-        for (ItemCompra item : compra.getItens()) {
-            Movimentacao entrada = Movimentacao.builder()
-                    .material(item.getMaterial())
-                    .quantidade(item.getQuantidade())
-                    .fornecedor(compra.getFornecedor())
-                    .notaFiscal(compra.getNumeroNotaFiscal())
-                    .data(LocalDateTime.now())
-                    .build();
-            movimentacaoService.registrarEntrada(entrada);
-        }
+        List<MovimentacaoService.LinhaItem> linhas = compra.getItens().stream()
+                .map(it -> new MovimentacaoService.LinhaItem(
+                        it.getMaterial().getId(), it.getQuantidade()))
+                .toList();
+        movimentacaoService.registrarEntrada(
+                compra.getFornecedor(),
+                compra.getNumeroNotaFiscal(),
+                "Entrada da Compra #" + compra.getId(),
+                linhas);
     }
 
     /**
      * RN10 - Para Compra DIRETA: a mercadoria foi adquirida sob demanda
      * específica para o setor solicitante e entregue diretamente.
      *
-     * O material NÃO passa pelo estoque geral do almoxarifado: nenhum saldo é
-     * incrementado nem decrementado. Apenas registramos uma movimentação do
-     * tipo {@link TipoMovimentacao#COMPRA_DIRETA} para cada item, contendo a
-     * referência ao setor de destino, ao fornecedor e à NF — assim o histórico
-     * mostra "o que compramos e enviamos para os setores" e o Relatório de
-     * Consumo por Setor (RF10) consegue contabilizar o consumo.
+     * <p>O material NÃO passa pelo estoque geral. Agrupamos todos os itens da
+     * compra em UMA movimentação multi-item do tipo {@link TipoMovimentacao#COMPRA_DIRETA}
+     * com o setor de destino — assim o Relatório de Consumo por Setor (RF10)
+     * consegue contabilizar o consumo somando os itens.</p>
      */
     private void baixarComoRepasseDireto(Compra compra) {
         Setor setorDestino = compra.getSetorSolicitante();
@@ -227,18 +225,17 @@ public class CompraService {
                     "RN10: compra direta sem setor solicitante — impossível repassar.");
         }
 
-        for (ItemCompra item : compra.getItens()) {
-            Movimentacao mov = Movimentacao.builder()
-                    .material(item.getMaterial())
-                    .quantidade(item.getQuantidade())
-                    .setorDestino(setorDestino)
-                    .fornecedor(compra.getFornecedor())
-                    .notaFiscal(compra.getNumeroNotaFiscal())
-                    .retiradoPor("Compra Direta #" + compra.getId())
-                    .data(LocalDateTime.now())
-                    .build();
-            movimentacaoService.registrarCompraDireta(mov);
-        }
+        List<MovimentacaoService.LinhaItem> linhas = compra.getItens().stream()
+                .map(it -> new MovimentacaoService.LinhaItem(
+                        it.getMaterial().getId(), it.getQuantidade()))
+                .toList();
+        movimentacaoService.registrarCompraDireta(
+                setorDestino,
+                "Compra Direta #" + compra.getId(),
+                compra.getFornecedor(),
+                compra.getNumeroNotaFiscal(),
+                "Repasse direto da Compra #" + compra.getId(),
+                linhas);
     }
 
     // =====================================================================

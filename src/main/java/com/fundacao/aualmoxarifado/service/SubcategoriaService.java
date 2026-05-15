@@ -23,6 +23,29 @@ public class SubcategoriaService {
         return subcategoriaRepository.findAll();
     }
 
+    public Subcategoria buscar(Long id) {
+        return subcategoriaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Subcategoria não encontrada."));
+    }
+
+    /**
+     * Edita uma subcategoria já existente.
+     *
+     * <p><b>Apenas {@code nome} e {@code descricao} podem ser alterados.</b>
+     * Sigla e Área são imutáveis após o cadastro porque o SKU dos materiais
+     * (RF18) é montado com elas — alterá-las desalinharia o histórico.</p>
+     */
+    @Transactional
+    public Subcategoria editar(Long id, String nome, String descricao) {
+        Subcategoria sub = buscar(id);
+        if (nome == null || nome.isBlank()) {
+            throw new IllegalArgumentException("Nome da subcategoria é obrigatório.");
+        }
+        sub.setNome(nome.trim());
+        sub.setDescricao(descricao);
+        return subcategoriaRepository.save(sub);
+    }
+
     /** Endpoint usado pelo dropdown em cascata do form de Material. */
     public List<Subcategoria> listarPorArea(Long areaId) {
         return subcategoriaRepository.findByAreaIdOrderByNomeAsc(areaId);
