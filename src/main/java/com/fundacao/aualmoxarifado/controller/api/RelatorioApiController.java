@@ -55,6 +55,38 @@ public class RelatorioApiController {
         return respond(relatorioService.alertasEstoque(formato));
     }
 
+    // ---------- Mensal / Trimestral / Anual ----------
+
+    @GetMapping("/mensal/export")
+    public ResponseEntity<byte[]> mensalExport(
+            @RequestParam Formato formato,
+            @RequestParam int ano,
+            @RequestParam int mes) {
+        return respond(relatorioService.relatorioMensal(ano, mes, formato));
+    }
+
+    @GetMapping("/trimestral/export")
+    public ResponseEntity<byte[]> trimestralExport(
+            @RequestParam Formato formato,
+            @RequestParam int ano,
+            @RequestParam int trimestre) {
+        return respond(relatorioService.relatorioTrimestral(ano, trimestre, formato));
+    }
+
+    @GetMapping("/anual/export")
+    public ResponseEntity<byte[]> anualExport(
+            @RequestParam Formato formato,
+            @RequestParam int ano) {
+        return respond(relatorioService.relatorioAnual(ano, formato));
+    }
+
+    @GetMapping("/anual/export-detalhado")
+    public ResponseEntity<byte[]> anualDetalhadoExport(
+            @RequestParam Formato formato,
+            @RequestParam int ano) {
+        return respond(relatorioService.relatorioAnualDetalhado(ano, formato));
+    }
+
     // ---------- helpers ----------
     private LocalDateTime[] periodo(LocalDate inicio, LocalDate fim) {
         LocalDate ini = inicio != null ? inicio : LocalDate.now().withDayOfMonth(1);

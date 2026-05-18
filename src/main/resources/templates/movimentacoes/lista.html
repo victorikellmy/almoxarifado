@@ -17,12 +17,71 @@
                 </a>
             </div>
 
+            <!-- Filtros -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <form method="get" action="/movimentacoes" class="row g-2 align-items-end">
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Tipo</label>
+                            <select name="tipo" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                <option value="ENTRADA"       th:selected="${filtroTipo?.name() == 'ENTRADA'}">Entrada</option>
+                                <option value="SAIDA"         th:selected="${filtroTipo?.name() == 'SAIDA'}">Saída</option>
+                                <option value="COMPRA_DIRETA" th:selected="${filtroTipo?.name() == 'COMPRA_DIRETA'}">Compra direta</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Status</label>
+                            <select name="status" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                <option value="PENDENTE_APROVACAO" th:selected="${filtroStatus?.name() == 'PENDENTE_APROVACAO'}">Pendente</option>
+                                <option value="APROVADO"           th:selected="${filtroStatus?.name() == 'APROVADO'}">Aprovado</option>
+                                <option value="ENTREGUE"           th:selected="${filtroStatus?.name() == 'ENTREGUE'}">Entregue</option>
+                                <option value="REJEITADO"          th:selected="${filtroStatus?.name() == 'REJEITADO'}">Rejeitado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Setor</label>
+                            <select name="setorId" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                <option th:each="s : ${setores}"
+                                        th:value="${s.id}"
+                                        th:text="${s.nome}"
+                                        th:selected="${filtroSetorId != null and filtroSetorId == s.id}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">De</label>
+                            <input type="date" name="inicio" class="form-control form-control-sm"
+                                   th:value="${filtroInicio}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Até</label>
+                            <input type="date" name="fim" class="form-control form-control-sm"
+                                   th:value="${filtroFim}">
+                        </div>
+                        <div class="col-md-2 d-flex gap-2">
+                            <button class="btn btn-sm btn-primary flex-grow-1">
+                                <i class="bi bi-funnel"></i> Filtrar
+                            </button>
+                            <a href="/movimentacoes" class="btn btn-sm btn-outline-secondary" title="Limpar filtros">
+                                <i class="bi bi-x-lg"></i>
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <div class="card table-card">
                 <div class="table-card-head">
                     <div>
                         <h5 class="mb-0">Histórico</h5>
                         <small class="text-muted">
-                            <span th:text="${#lists.size(movimentacoes)}"></span> movimentação(ões)
+                            <span th:text="${page.totalElements}"></span> movimentação(ões)
+                            <span th:if="${page.totalPages > 1}">
+                                — página <span th:text="${page.number + 1}"></span>
+                                de <span th:text="${page.totalPages}"></span>
+                            </span>
                         </small>
                     </div>
                 </div>
@@ -42,7 +101,7 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr th:each="m : ${movimentacoes}" style="cursor:pointer;"
+                        <tr th:each="m : ${page.content}" style="cursor:pointer;"
                             th:onclick="|window.location.href='/movimentacoes/${m.id}'|">
                             <td class="text-muted" th:text="${m.id}"></td>
                             <td class="text-muted small" th:text="${#temporals.format(m.data, 'dd/MM/yyyy HH:mm')}"></td>
@@ -106,15 +165,17 @@
                                 </form>
                             </td>
                         </tr>
-                        <tr th:if="${#lists.isEmpty(movimentacoes)}">
+                        <tr th:if="${page.empty}">
                             <td colspan="9" class="empty-state">
                                 <i class="bi bi-clock-history d-block mb-2"></i>
-                                Nenhuma movimentação registrada.
+                                Nenhuma movimentação encontrada com os filtros atuais.
                             </td>
                         </tr>
                         </tbody>
                     </table>
                 </div>
+
+                <div th:replace="~{fragments/pagination :: paginacao(${page}, '/movimentacoes')}"></div>
             </div>
 
         </div>

@@ -74,6 +74,7 @@ public class SecurityConfig {
 
                         // ações administrativas
                         .requestMatchers("/usuarios/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers("/auditoria/**").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/movimentacoes/*/status").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/areas/*/excluir").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/subcategorias/*/excluir").hasRole("ADMINISTRADOR")

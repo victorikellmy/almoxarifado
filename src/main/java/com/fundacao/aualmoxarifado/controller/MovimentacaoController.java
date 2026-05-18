@@ -2,11 +2,15 @@ package com.fundacao.aualmoxarifado.controller;
 
 import com.fundacao.aualmoxarifado.domain.Setor;
 import com.fundacao.aualmoxarifado.domain.StatusMovimentacao;
+import com.fundacao.aualmoxarifado.domain.TipoMovimentacao;
 import com.fundacao.aualmoxarifado.repository.MaterialRepository;
 import com.fundacao.aualmoxarifado.repository.SetorRepository;
 import com.fundacao.aualmoxarifado.service.MovimentacaoService;
 import com.fundacao.aualmoxarifado.service.MovimentacaoService.LinhaItem;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -28,10 +32,33 @@ public class MovimentacaoController {
     private final MaterialRepository materialRepository;
     private final SetorRepository setorRepository;
 
-    // ---------- Listagem ----------
+    // ---------- Listagem paginada + filtros ----------
     @GetMapping
-    public String listar(Model model) {
-        model.addAttribute("movimentacoes", movimentacaoService.listarTodas());
+    public String listar(
+            @RequestParam(required = false) TipoMovimentacao tipo,
+            @RequestParam(required = false) StatusMovimentacao status,
+            @RequestParam(required = false) Long setorId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate inicio,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fim,
+            @PageableDefault(size = 20, sort = "data", direction = Sort.Direction.DESC)
+            Pageable pageable,
+            Model model) {
+
+        LocalDateTime inicioDt = inicio != null ? inicio.atStartOfDay() : null;
+        LocalDateTime fimDt    = fim    != null ? fim.atTime(LocalTime.MAX) : null;
+
+        var page = movimentacaoService.listar(tipo, status, null, setorId, inicioDt, fimDt, pageable);
+
+        model.addAttribute("page", page);
+        model.addAttribute("setores", setorRepository.findAll());
+        // Devolve filtros selecionados para a UI manter o estado.
+        model.addAttribute("filtroTipo", tipo);
+        model.addAttribute("filtroStatus", status);
+        model.addAttribute("filtroSetorId", setorId);
+        model.addAttribute("filtroInicio", inicio);
+        model.addAttribute("filtroFim", fim);
         return "movimentacoes/lista";
     }
 

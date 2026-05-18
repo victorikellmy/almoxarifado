@@ -2,9 +2,14 @@ package com.fundacao.aualmoxarifado.service;
 
 import com.fundacao.aualmoxarifado.domain.*;
 import com.fundacao.aualmoxarifado.dto.ConsumoSetorDTO;
+import com.fundacao.aualmoxarifado.exception.RecursoNaoEncontradoException;
+import com.fundacao.aualmoxarifado.exception.RegraDeNegocioException;
 import com.fundacao.aualmoxarifado.repository.MaterialRepository;
 import com.fundacao.aualmoxarifado.repository.MovimentacaoRepository;
+import com.fundacao.aualmoxarifado.repository.spec.MovimentacaoSpecifications;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,18 +30,35 @@ public class MovimentacaoService {
 
     private final MovimentacaoRepository movimentacaoRepository;
     private final MaterialRepository materialRepository;
+    private final AuditoriaService auditoriaService;
 
     /** Linha de entrada na criação de uma movimentação multi-item. */
     public record LinhaItem(Long materialId, Integer quantidade) {}
 
     public Movimentacao buscar(Long id) {
         return movimentacaoRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Movimentação não encontrada."));
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Movimentacao", id));
     }
 
     /** Histórico ordenado do mais recente para o mais antigo. */
     public List<Movimentacao> listarTodas() {
         return movimentacaoRepository.findAll(Sort.by(Sort.Direction.DESC, "data"));
+    }
+
+    /**
+     * Listagem paginada e filtrada — usada pela tela web e pela REST API.
+     * Qualquer filtro nulo é ignorado pela Specification.
+     */
+    public Page<Movimentacao> listar(TipoMovimentacao tipo,
+                                     StatusMovimentacao status,
+                                     Long materialId,
+                                     Long setorId,
+                                     LocalDateTime inicio,
+                                     LocalDateTime fim,
+                                     Pageable pageable) {
+        return movimentacaoRepository.findAll(
+                MovimentacaoSpecifications.filtrar(tipo, status, materialId, setorId, inicio, fim),
+                pageable);
     }
 
     // =========================================================================
@@ -65,7 +87,7 @@ public class MovimentacaoService {
             validarQuantidade(ln.quantidade());
             // Validação: estoque suficiente AGORA (não debita ainda, mas evita pedidos absurdos)
             if (material.getEstoqueAtual() < ln.quantidade()) {
-                throw new IllegalStateException(
+                throw new RegraDeNegocioException(
                         "Estoque insuficiente para \"" + material.getNome() + "\". "
                                 + "Disponível: " + material.getEstoqueAtual()
                                 + ", solicitado: " + ln.quantidade());
@@ -76,7 +98,9 @@ public class MovimentacaoService {
                     .valorUnitario(material.getValorUnitario())
                     .build());
         }
-        return movimentacaoRepository.save(mov);
+        Movimentacao salva = movimentacaoRepository.save(mov);
+        auditoriaService.registrarSaida(salva);
+        return salva;
     }
 
     // =========================================================================
@@ -111,7 +135,9 @@ public class MovimentacaoService {
                     .valorUnitario(material.getValorUnitario())
                     .build());
         }
-        return movimentacaoRepository.save(mov);
+        Movimentacao salva = movimentacaoRepository.save(mov);
+        auditoriaService.registrarEntrada(salva);
+        return salva;
     }
 
     // =========================================================================
@@ -145,7 +171,9 @@ public class MovimentacaoService {
                     .valorUnitario(material.getValorUnitario())
                     .build());
         }
-        return movimentacaoRepository.save(mov);
+        Movimentacao salva = movimentacaoRepository.save(mov);
+        auditoriaService.registrarCompraDireta(salva);
+        return salva;
     }
 
     // =========================================================================
@@ -171,7 +199,7 @@ public class MovimentacaoService {
             for (MovimentacaoItem item : mov.getItens()) {
                 Material material = item.getMaterial();
                 if (material.getEstoqueAtual() < item.getQuantidade()) {
-                    throw new IllegalStateException(
+                    throw new RegraDeNegocioException(
                             "Não é possível aprovar: estoque insuficiente para \""
                                     + material.getNome() + "\". Disponível: "
                                     + material.getEstoqueAtual());
@@ -182,7 +210,9 @@ public class MovimentacaoService {
         }
 
         mov.setStatus(novoStatus);
-        return movimentacaoRepository.save(mov);
+        Movimentacao salva = movimentacaoRepository.save(mov);
+        auditoriaService.alterarStatus(salva);
+        return salva;
     }
 
     // =========================================================================
@@ -217,8 +247,7 @@ public class MovimentacaoService {
             throw new IllegalArgumentException("Material é obrigatório em todos os itens.");
         }
         return materialRepository.findById(materialId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Material id=" + materialId + " não encontrado."));
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Material", materialId));
     }
 
     private static void validarQuantidade(Integer qtd) {
@@ -229,7 +258,8 @@ public class MovimentacaoService {
 
     private static void validarSetorObrigatorio(Setor setor, String mensagem) {
         if (setor == null || setor.getId() == null) {
-            throw new IllegalArgumentException(mensagem);
+            // RN03/RN10 é regra de negócio explícita — 409.
+            throw new RegraDeNegocioException(mensagem);
         }
     }
 

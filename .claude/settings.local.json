@@ -3,7 +3,9 @@
     "allow": [
       "Bash(ls \"C:\\\\Users\\\\Fa Saude\\\\AppData\\\\Roaming\\\\Claude\\\\local-agent-mode-sessions\\\\skills-plugin\\\\d7d53617-618b-402b-990e-78df45ebbd90\\\\a2a5b466-ab2e-4f21-b4ed-0a23b0956283\\\\skills\\\\xlsx\\\\scripts\")",
       "Bash(python -c \"import openpyxl; wb = openpyxl.load_workbook\\(r'C:\\\\Users\\\\Fa Saude\\\\Downloads\\\\ESTOQUE FUNDAÇÃO revisada 2025 \\(1\\).xlsx', data_only=True\\); print\\('SHEETS:', wb.sheetnames\\)\")",
-      "Bash(./gradlew.bat compileJava --console=plain)"
+      "Bash(./gradlew.bat compileJava --console=plain)",
+      "Bash(./gradlew compileJava --console=plain -q)",
+      "PowerShell(./gradlew.bat compileJava --console=plain -q 2>&1)"
     ]
   }
 }

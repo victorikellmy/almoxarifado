@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <!--
   Fragments compartilhados de layout (Thymeleaf) — visual unificado com o
   Gerenciador Patrimonial (Claude Design / Sidebar Edition).
@@ -41,7 +42,12 @@
         (function () {
             var stored = localStorage.getItem('alm-theme');
             var prefers = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-            document.documentElement.setAttribute('data-theme', stored || prefers);
+            var theme = stored || prefers;
+            document.documentElement.setAttribute('data-theme', theme);
+            // Bootstrap 5.3 usa data-bs-theme para alternar suas próprias
+            // variáveis (cor de texto dos cards, tabelas etc.). Sem isso
+            // os valores dentro de .card ficavam pretos sobre fundo escuro.
+            document.documentElement.setAttribute('data-bs-theme', theme);
 
             var sidebar = localStorage.getItem('alm-sidebar');
             if (sidebar === 'collapsed') {
@@ -244,6 +250,45 @@
         [data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6 {
             color: #f1f5f9;                  /* slate-100 */
         }
+        /* Garantia: valores dentro de .card sempre legíveis no escuro,
+           mesmo se Bootstrap reverter a cor de texto via --bs-body-color. */
+        [data-theme="dark"] .card,
+        [data-theme="dark"] .card-pad,
+        [data-theme="dark"] .card-body {
+            color: #e2e8f0;                  /* slate-200 */
+        }
+        [data-theme="dark"] .card .fw-bold,
+        [data-theme="dark"] .card .fw-semibold,
+        [data-theme="dark"] .card .fs-4 {
+            color: #f8fafc;                  /* slate-50 — destaca valores */
+        }
+        /* Status pills em dark mode: backgrounds suaves com texto bem mais
+           claro para WCAG-friendly contrast. Override do inline-style das
+           páginas via !important — propositalmente escopado a [data-theme="dark"]. */
+        [data-theme="dark"] .status-pill {
+            filter: none;
+            border: 1px solid transparent;
+        }
+        [data-theme="dark"] .status-pill.text-warning {
+            background: rgba(245, 158, 11, 0.18) !important;
+            color: #fcd34d !important;
+            border-color: rgba(245, 158, 11, 0.35);
+        }
+        [data-theme="dark"] .status-pill.text-info {
+            background: rgba(14, 165, 233, 0.18) !important;
+            color: #7dd3fc !important;
+            border-color: rgba(14, 165, 233, 0.35);
+        }
+        [data-theme="dark"] .status-pill.text-success {
+            background: rgba(16, 185, 129, 0.18) !important;
+            color: #6ee7b7 !important;
+            border-color: rgba(16, 185, 129, 0.35);
+        }
+        [data-theme="dark"] .status-pill.text-danger {
+            background: rgba(239, 68, 68, 0.18) !important;
+            color: #fca5a5 !important;
+            border-color: rgba(239, 68, 68, 0.35);
+        }
     </style>
 </head>
 
@@ -316,6 +361,12 @@
                 <i class="bi bi-box-arrow-up"></i>
                 <span class="sidebar-link-label">Nova saída</span>
             </a>
+            <a class="sidebar-link"
+               sec:authorize="hasRole('ADMINISTRADOR')"
+               th:classappend="${ativo == 'auditoria'} ? 'active'" th:href="@{/auditoria}">
+                <i class="bi bi-shield-check"></i>
+                <span class="sidebar-link-label">Auditoria</span>
+            </a>
         </div>
 
         <div class="sidebar-section">
@@ -324,6 +375,21 @@
                th:href="@{/movimentacoes/relatorio/consumo-setor}">
                 <i class="bi bi-bar-chart"></i>
                 <span class="sidebar-link-label">Consumo por setor</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'rel-mensal'} ? 'active'"
+               th:href="@{/relatorios/mensal}">
+                <i class="bi bi-calendar3"></i>
+                <span class="sidebar-link-label">Relatório mensal</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'rel-trimestral'} ? 'active'"
+               th:href="@{/relatorios/trimestral}">
+                <i class="bi bi-calendar2-range"></i>
+                <span class="sidebar-link-label">Relatório trimestral</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'rel-anual'} ? 'active'"
+               th:href="@{/relatorios/anual}">
+                <i class="bi bi-journal-bookmark"></i>
+                <span class="sidebar-link-label">Relatório anual</span>
             </a>
         </div>
     </nav>
@@ -425,6 +491,7 @@
                 const current = document.documentElement.getAttribute('data-theme');
                 const next = current === 'dark' ? 'light' : 'dark';
                 document.documentElement.setAttribute('data-theme', next);
+                document.documentElement.setAttribute('data-bs-theme', next);
                 localStorage.setItem('alm-theme', next);
                 sync();
             });

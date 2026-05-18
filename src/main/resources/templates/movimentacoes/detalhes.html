@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Detalhes da movimentação')}"></head>
 <body>
 <div class="app-shell">
@@ -16,6 +17,12 @@
                     <i class="bi bi-arrow-left"></i> Voltar para a lista
                 </a>
                 <div class="d-flex gap-2">
+                    <a sec:authorize="hasRole('ADMINISTRADOR')"
+                       th:href="@{/auditoria(entidade='Movimentacao', entidadeId=${movimentacao.id})}"
+                       class="btn btn-outline-secondary"
+                       title="Ver trilha de auditoria desta movimentação">
+                        <i class="bi bi-shield-check"></i> Ver auditoria
+                    </a>
                     <form th:if="${movimentacao.status.name() == 'PENDENTE_APROVACAO'}"
                           th:action="@{|/movimentacoes/${movimentacao.id}/status|}" method="post">
                         <input type="hidden" name="status" value="APROVADO">

@@ -1,15 +1,21 @@
 package com.fundacao.aualmoxarifado.repository;
 
 import com.fundacao.aualmoxarifado.domain.Movimentacao;
+import com.fundacao.aualmoxarifado.dto.ConsumoMaterialDTO;
 import com.fundacao.aualmoxarifado.dto.ConsumoSetorDTO;
+import com.fundacao.aualmoxarifado.dto.GastoSetorDTO;
+import com.fundacao.aualmoxarifado.dto.LinhaMesTipoDTO;
+import com.fundacao.aualmoxarifado.dto.ResumoTipoDTO;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long> {
+public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long>,
+                                                 JpaSpecificationExecutor<Movimentacao> {
 
     /**
      * RF10 - Relatório de Consumo por Setor.
@@ -43,4 +49,119 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
            """)
     List<ConsumoSetorDTO> consumoPorSetor(@Param("inicio") LocalDateTime inicio,
                                           @Param("fim") LocalDateTime fim);
+
+    /**
+     * Agregação por tipo (ENTRADA/SAIDA/COMPRA_DIRETA) num período.
+     * Inclui só movimentações efetivas (não-pendentes e não-rejeitadas).
+     * Usado pelo cabeçalho dos relatórios mensal/trimestral/anual.
+     */
+    @Query("""
+           SELECT new com.fundacao.aualmoxarifado.dto.ResumoTipoDTO(
+                  m.tipo,
+                  COUNT(DISTINCT m.id),
+                  SUM(i.quantidade),
+                  SUM(i.quantidade * COALESCE(i.valorUnitario, 0)))
+           FROM Movimentacao m
+           JOIN m.itens i
+           WHERE m.data BETWEEN :inicio AND :fim
+             AND m.status NOT IN (com.fundacao.aualmoxarifado.domain.StatusMovimentacao.PENDENTE_APROVACAO,
+                                  com.fundacao.aualmoxarifado.domain.StatusMovimentacao.REJEITADO)
+           GROUP BY m.tipo
+           ORDER BY m.tipo
+           """)
+    List<ResumoTipoDTO> resumoPorTipo(@Param("inicio") LocalDateTime inicio,
+                                      @Param("fim") LocalDateTime fim);
+
+    /**
+     * Top materiais (saídas + compras diretas) por quantidade no período.
+     * Suporta o "Top 10 materiais consumidos" do relatório mensal.
+     */
+    @Query("""
+           SELECT new com.fundacao.aualmoxarifado.dto.ConsumoMaterialDTO(
+                  mat.id, mat.codigoSku, mat.nome, mat.unidadeMedida,
+                  SUM(i.quantidade),
+                  SUM(i.quantidade * COALESCE(i.valorUnitario, 0)))
+           FROM Movimentacao m
+           JOIN m.itens i
+           JOIN i.material mat
+           WHERE m.data BETWEEN :inicio AND :fim
+             AND (
+                   (m.tipo = com.fundacao.aualmoxarifado.domain.TipoMovimentacao.SAIDA
+                    AND m.status IN (com.fundacao.aualmoxarifado.domain.StatusMovimentacao.APROVADO,
+                                     com.fundacao.aualmoxarifado.domain.StatusMovimentacao.ENTREGUE))
+                OR  m.tipo = com.fundacao.aualmoxarifado.domain.TipoMovimentacao.COMPRA_DIRETA
+                 )
+           GROUP BY mat.id, mat.codigoSku, mat.nome, mat.unidadeMedida
+           ORDER BY SUM(i.quantidade) DESC
+           """)
+    List<ConsumoMaterialDTO> topMateriais(@Param("inicio") LocalDateTime inicio,
+                                          @Param("fim") LocalDateTime fim);
+
+    /**
+     * Custo por setor no período — soma valor de saídas APROVADO/ENTREGUE
+     * + compras diretas. Comparativo de custo entre setores.
+     */
+    @Query("""
+           SELECT new com.fundacao.aualmoxarifado.dto.GastoSetorDTO(
+                  s.id, s.nome, s.codigoCentroCusto,
+                  SUM(i.quantidade),
+                  SUM(i.quantidade * COALESCE(i.valorUnitario, 0)))
+           FROM Movimentacao m
+           JOIN m.setorDestino s
+           JOIN m.itens i
+           WHERE m.data BETWEEN :inicio AND :fim
+             AND (
+                   (m.tipo = com.fundacao.aualmoxarifado.domain.TipoMovimentacao.SAIDA
+                    AND m.status IN (com.fundacao.aualmoxarifado.domain.StatusMovimentacao.APROVADO,
+                                     com.fundacao.aualmoxarifado.domain.StatusMovimentacao.ENTREGUE))
+                OR  m.tipo = com.fundacao.aualmoxarifado.domain.TipoMovimentacao.COMPRA_DIRETA
+                 )
+           GROUP BY s.id, s.nome, s.codigoCentroCusto
+           ORDER BY SUM(i.quantidade * COALESCE(i.valorUnitario, 0)) DESC
+           """)
+    List<GastoSetorDTO> gastoPorSetor(@Param("inicio") LocalDateTime inicio,
+                                      @Param("fim") LocalDateTime fim);
+
+    /**
+     * Agregação "matéria-prima" por (ano, mês, tipo) — base para o resumo
+     * mês-a-mês dos relatórios trimestrais e anuais. O service pivota.
+     *
+     * <p>EXTRACT(YEAR|MONTH FROM ...) é JPQL padrão e funciona em Hibernate 6
+     * sobre PostgreSQL / MySQL / H2 / Oracle.</p>
+     */
+    @Query("""
+           SELECT new com.fundacao.aualmoxarifado.dto.LinhaMesTipoDTO(
+                  CAST(EXTRACT(YEAR  FROM m.data) AS integer),
+                  CAST(EXTRACT(MONTH FROM m.data) AS integer),
+                  m.tipo,
+                  COUNT(DISTINCT m.id),
+                  SUM(i.quantidade),
+                  SUM(i.quantidade * COALESCE(i.valorUnitario, 0)))
+           FROM Movimentacao m
+           JOIN m.itens i
+           WHERE m.data BETWEEN :inicio AND :fim
+             AND m.status NOT IN (com.fundacao.aualmoxarifado.domain.StatusMovimentacao.PENDENTE_APROVACAO,
+                                  com.fundacao.aualmoxarifado.domain.StatusMovimentacao.REJEITADO)
+           GROUP BY EXTRACT(YEAR FROM m.data), EXTRACT(MONTH FROM m.data), m.tipo
+           ORDER BY 1, 2, 3
+           """)
+    List<LinhaMesTipoDTO> agregadoPorMesTipo(@Param("inicio") LocalDateTime inicio,
+                                             @Param("fim") LocalDateTime fim);
+
+    /**
+     * Lista detalhada de movimentações efetivas num intervalo — usado pelo
+     * export "detalhado" do relatório anual para a contabilidade.
+     */
+    @Query("""
+           SELECT DISTINCT m FROM Movimentacao m
+           LEFT JOIN FETCH m.itens i
+           LEFT JOIN FETCH i.material
+           LEFT JOIN FETCH m.setorDestino
+           WHERE m.data BETWEEN :inicio AND :fim
+             AND m.status NOT IN (com.fundacao.aualmoxarifado.domain.StatusMovimentacao.PENDENTE_APROVACAO,
+                                  com.fundacao.aualmoxarifado.domain.StatusMovimentacao.REJEITADO)
+           ORDER BY m.data
+           """)
+    List<Movimentacao> findEfetivasNoIntervalo(@Param("inicio") LocalDateTime inicio,
+                                               @Param("fim") LocalDateTime fim);
 }

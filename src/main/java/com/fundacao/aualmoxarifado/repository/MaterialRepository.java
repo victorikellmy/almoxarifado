@@ -3,12 +3,14 @@ package com.fundacao.aualmoxarifado.repository;
 import com.fundacao.aualmoxarifado.domain.Material;
 import com.fundacao.aualmoxarifado.domain.Subcategoria;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface MaterialRepository extends JpaRepository<Material, Long> {
+public interface MaterialRepository extends JpaRepository<Material, Long>,
+                                             JpaSpecificationExecutor<Material> {
 
     /** RF18 - lookup pelo SKU lido no scanner do app mobile. */
     Optional<Material> findByCodigoSku(String codigoSku);

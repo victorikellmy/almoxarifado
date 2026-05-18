@@ -3,6 +3,11 @@ package com.fundacao.aualmoxarifado.domain;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -31,6 +36,7 @@ import java.util.List;
                @Index(name = "idx_mov_status", columnList = "status"),
                @Index(name = "idx_mov_setor",  columnList = "setor_destino_id")
        })
+@EntityListeners(AuditingEntityListener.class)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Movimentacao {
 
@@ -84,6 +90,27 @@ public class Movimentacao {
                fetch = FetchType.LAZY)
     @Builder.Default
     private List<MovimentacaoItem> itens = new ArrayList<>();
+
+    // ---------- auditoria JPA (Spring Data) ----------
+    // `data` (acima) é a data de NEGÓCIO da movimentação. Os campos abaixo são
+    // a auditoria técnica: quem criou/alterou o registro e quando, sem mexer
+    // no domínio. Populados automaticamente pelo AuditingEntityListener.
+
+    @CreatedDate
+    @Column(name = "criado_em", updatable = false)
+    private LocalDateTime criadoEm;
+
+    @CreatedBy
+    @Column(name = "criado_por", updatable = false, length = 120)
+    private String criadoPor;
+
+    @LastModifiedDate
+    @Column(name = "atualizado_em")
+    private LocalDateTime atualizadoEm;
+
+    @LastModifiedBy
+    @Column(name = "atualizado_por", length = 120)
+    private String atualizadoPor;
 
     // ---------- helpers ----------
 

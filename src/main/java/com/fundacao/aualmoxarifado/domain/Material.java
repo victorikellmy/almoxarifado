@@ -5,8 +5,14 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.*;
+import org.springframework.data.annotation.CreatedBy;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 /**
  * RF12 - Material/Produto do catálogo do almoxarifado.
@@ -23,6 +29,7 @@ import java.math.BigDecimal;
  */
 @Entity
 @Table(name = "material")
+@EntityListeners(AuditingEntityListener.class)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Material {
 
@@ -70,6 +77,25 @@ public class Material {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "subcategoria_id", nullable = false)
     private Subcategoria subcategoria;
+
+    // ---------- auditoria JPA (Spring Data) ----------
+    // Populados automaticamente pelo AuditingEntityListener via AuditorAwareImpl.
+
+    @CreatedDate
+    @Column(name = "criado_em", updatable = false)
+    private LocalDateTime criadoEm;
+
+    @CreatedBy
+    @Column(name = "criado_por", updatable = false, length = 120)
+    private String criadoPor;
+
+    @LastModifiedDate
+    @Column(name = "atualizado_em")
+    private LocalDateTime atualizadoEm;
+
+    @LastModifiedBy
+    @Column(name = "atualizado_por", length = 120)
+    private String atualizadoPor;
 
     /** Helper de UI para a RN06 (não persistido). */
     @Transient

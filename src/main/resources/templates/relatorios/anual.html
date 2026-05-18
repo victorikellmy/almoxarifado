@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Relatório anual')}"></head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('rel-anual')}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout ::
+                              topbar('Relatório anual',
+                                     'Consolidado para contabilidade — fechamento do exercício')}"></header>
+
+        <div class="app-content">
+
+            <!-- Filtro -->
+            <div class="card mb-3">
+                <div class="card-pad">
+                    <form method="get" th:action="@{/relatorios/anual}" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Ano-base</label>
+                            <input type="number" name="ano" class="form-control" min="2000" max="2100"
+                                   th:value="${ano}">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-funnel"></i> Filtrar
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label d-block">Exportar consolidado</label>
+                            <div class="btn-group w-100">
+                                <a class="btn btn-outline-secondary"
+                                   th:href="@{|/api/relatorios/anual/export?formato=XLSX&ano=${ano}|}">
+                                    <i class="bi bi-file-earmark-excel"></i> XLSX
+                                </a>
+                                <a class="btn btn-outline-secondary"
+                                   th:href="@{|/api/relatorios/anual/export?formato=CSV&ano=${ano}|}">
+                                    CSV
+                                </a>
+                                <a class="btn btn-outline-secondary"
+                                   th:href="@{|/api/relatorios/anual/export?formato=PDF&ano=${ano}|}">
+                                    PDF
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                    <hr/>
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <p class="text-muted small mb-0">
+                            <i class="bi bi-info-circle"></i>
+                            A versão <strong>detalhada</strong> traz uma linha por item de cada movimentação do ano —
+                            útil para auditoria e conferência da contabilidade.
+                        </p>
+                        <div class="btn-group">
+                            <a class="btn btn-sm btn-warning"
+                               th:href="@{|/api/relatorios/anual/export-detalhado?formato=XLSX&ano=${ano}|}">
+                                <i class="bi bi-file-earmark-spreadsheet"></i> Baixar detalhado (XLSX)
+                            </a>
+                            <a class="btn btn-sm btn-outline-secondary"
+                               th:href="@{|/api/relatorios/anual/export-detalhado?formato=CSV&ano=${ano}|}">
+                                CSV
+                            </a>
+                            <a class="btn btn-sm btn-outline-secondary"
+                               th:href="@{|/api/relatorios/anual/export-detalhado?formato=PDF&ano=${ano}|}">
+                                PDF
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cabeçalho do exercício -->
+            <div class="card mb-3">
+                <div class="card-pad d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <h4 class="mb-1" th:text="|Exercício ${dados.ano()}|">Exercício</h4>
+                        <small class="text-muted">Consolidado anual de movimentações</small>
+                    </div>
+                    <div class="text-end">
+                        <div class="text-muted small text-uppercase" style="letter-spacing:.05em;">Valor total movimentado</div>
+                        <div class="fs-2 fw-bold"
+                             th:text="${'R$ ' + #numbers.formatDecimal(dados.totalGeral().valorTotal(), 1, 'POINT', 2, 'COMMA')}">R$ 0,00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cards de resumo por tipo -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-4" th:each="r : ${dados.resumoPorTipo}">
+                    <div class="stat-card">
+                        <div class="stat-icon"
+                             th:classappend="${r.tipo().name() == 'ENTRADA'} ? 'bg-success-soft'
+                                          : (${r.tipo().name() == 'SAIDA'} ? 'bg-info-soft' : 'bg-brand')">
+                            <i class="bi"
+                               th:classappend="${r.tipo().name() == 'ENTRADA'} ? 'bi-box-arrow-in-down'
+                                            : (${r.tipo().name() == 'SAIDA'} ? 'bi-box-arrow-up' : 'bi-cart3')"></i>
+                        </div>
+                        <div>
+                            <p class="stat-label"
+                               th:text="${r.tipo().name() == 'ENTRADA'} ? 'Entradas'
+                                      : (${r.tipo().name() == 'SAIDA'} ? 'Saídas' : 'Compras diretas')"></p>
+                            <p class="stat-value" th:text="${r.qtdMovimentacoes()}">0</p>
+                            <p class="stat-hint">
+                                <span th:text="${r.totalItens()}">0</span> itens ·
+                                <span th:text="${'R$ ' + #numbers.formatDecimal(r.valorTotal(), 1, 'POINT', 2, 'COMMA')}">R$ 0,00</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Consolidado mês-a-mês -->
+            <div class="card table-card mb-3">
+                <div class="table-card-head">
+                    <div>
+                        <h5 class="mb-0">Consolidado mensal</h5>
+                        <small class="text-muted">12 meses do exercício — valores e quantidades</small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>Mês</th>
+                            <th class="text-end">Entradas</th>
+                            <th class="text-end">Saídas</th>
+                            <th class="text-end">Compras diretas</th>
+                            <th class="text-end">Total movs</th>
+                            <th class="text-end">Total itens</th>
+                            <th class="text-end">Valor entradas</th>
+                            <th class="text-end">Valor saídas</th>
+                            <th class="text-end">Valor compras</th>
+                            <th class="text-end">Valor total</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="m : ${dados.meses}">
+                            <td class="fw-semibold"
+                                th:text="${#strings.capitalize(#temporals.format(T(java.time.LocalDate).of(m.ano(), m.mes(), 1), 'MMMM'))}"></td>
+                            <td class="text-end" th:text="${m.qtdEntradas()}"></td>
+                            <td class="text-end" th:text="${m.qtdSaidas()}"></td>
+                            <td class="text-end" th:text="${m.qtdComprasDiretas()}"></td>
+                            <td class="text-end fw-semibold" th:text="${m.qtdTotalMovimentacoes()}"></td>
+                            <td class="text-end" th:text="${m.totalItens()}"></td>
+                            <td class="text-end"
+                                th:text="${'R$ ' + #numbers.formatDecimal(m.valorEntradas(), 1, 'POINT', 2, 'COMMA')}"></td>
+                            <td class="text-end"
+                                th:text="${'R$ ' + #numbers.formatDecimal(m.valorSaidas(), 1, 'POINT', 2, 'COMMA')}"></td>
+                            <td class="text-end"
+                                th:text="${'R$ ' + #numbers.formatDecimal(m.valorComprasDiretas(), 1, 'POINT', 2, 'COMMA')}"></td>
+                            <td class="text-end fw-bold"
+                                th:text="${'R$ ' + #numbers.formatDecimal(m.valorTotal(), 1, 'POINT', 2, 'COMMA')}"></td>
+                        </tr>
+                        </tbody>
+                        <tfoot>
+                        <tr class="fw-bold">
+                            <td th:text="|TOTAL ${dados.ano()}|">TOTAL</td>
+                            <td class="text-end"
+                                th:text="${#aggregates.sum(dados.meses.![qtdEntradas()])}"></td>
+                            <td class="text-end"
+                                th:text="${#aggregates.sum(dados.meses.![qtdSaidas()])}"></td>
+                            <td class="text-end"
+                                th:text="${#aggregates.sum(dados.meses.![qtdComprasDiretas()])}"></td>
+                            <td class="text-end"
+                                th:text="${#aggregates.sum(dados.meses.![qtdTotalMovimentacoes()])}"></td>
+                            <td class="text-end"
+                                th:text="${#aggregates.sum(dados.meses.![totalItens()])}"></td>
+                            <td class="text-end"
+                                th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(dados.meses.![valorEntradas()]), 1, 'POINT', 2, 'COMMA')}"></td>
+                            <td class="text-end"
+                                th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(dados.meses.![valorSaidas()]), 1, 'POINT', 2, 'COMMA')}"></td>
+                            <td class="text-end"
+                                th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(dados.meses.![valorComprasDiretas()]), 1, 'POINT', 2, 'COMMA')}"></td>
+                            <td class="text-end"
+                                th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(dados.meses.![valorTotal()]), 1, 'POINT', 2, 'COMMA')}"></td>
+                        </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Gasto por setor / centro de custo -->
+            <div class="card table-card">
+                <div class="table-card-head">
+                    <div>
+                        <h5 class="mb-0">Custo por centro de custo / setor</h5>
+                        <small class="text-muted">Apresentação contábil — ordenado por valor</small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th style="width:60px">#</th>
+                            <th>Centro de custo</th>
+                            <th>Setor</th>
+                            <th class="text-end">Itens consumidos</th>
+                            <th class="text-end">Valor anual</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="g, it : ${dados.gastoPorSetor}">
+                            <td class="text-muted" th:text="${it.count}"></td>
+                            <td>
+                                <span th:if="${g.codigoCentroCusto()}" class="badge bg-primary"
+                                      th:text="${g.codigoCentroCusto()}"></span>
+                                <span th:unless="${g.codigoCentroCusto()}" class="text-muted">—</span>
+                            </td>
+                            <td class="fw-semibold" th:text="${g.nomeSetor()}"></td>
+                            <td class="text-end" th:text="${g.totalQuantidade()}"></td>
+                            <td class="text-end fw-bold"
+                                th:text="${'R$ ' + #numbers.formatDecimal(g.valorTotal(), 1, 'POINT', 2, 'COMMA')}"></td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(dados.gastoPorSetor)}">
+                            <td colspan="5" class="empty-state">
+                                <i class="bi bi-inbox d-block mb-2"></i>
+                                Sem custos atribuídos a setores no exercício.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

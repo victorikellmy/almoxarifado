@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Auditoria — Detalhe')}"></head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('auditoria')}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout :: topbar('Auditoria',
+                              'Detalhe do evento')}"></header>
+
+        <div class="app-content">
+
+            <div class="page-header">
+                <a href="/auditoria" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="text-muted small text-uppercase fw-semibold">Quando</div>
+                            <div class="fs-6"
+                                 th:text="${#temporals.format(log.timestamp, 'dd/MM/yyyy HH:mm:ss')}"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-muted small text-uppercase fw-semibold">Usuário</div>
+                            <div>
+                                <span class="badge bg-secondary fs-6" th:text="${log.usuario}"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-muted small text-uppercase fw-semibold">Ação</div>
+                            <div>
+                                <span class="badge bg-info fs-6" th:if="${log.acao.name() == 'REGISTRAR_SAIDA'}">
+                                    <i class="bi bi-box-arrow-up"></i> Registrar saída
+                                </span>
+                                <span class="badge bg-primary fs-6" th:if="${log.acao.name() == 'ALTERAR_STATUS_MOVIMENTACAO'}">
+                                    <i class="bi bi-arrow-repeat"></i> Alterar status
+                                </span>
+                                <span class="badge bg-success fs-6" th:if="${log.acao.name() == 'REGISTRAR_ENTRADA'}">
+                                    <i class="bi bi-box-arrow-in-down"></i> Registrar entrada
+                                </span>
+                                <span class="badge bg-warning text-dark fs-6" th:if="${log.acao.name() == 'REGISTRAR_COMPRA_DIRETA'}">
+                                    <i class="bi bi-cart3"></i> Compra direta
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-muted small text-uppercase fw-semibold">ID do evento</div>
+                            <div class="font-monospace" th:text="${log.id}"></div>
+                        </div>
+                    </div>
+
+                    <hr/>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="text-muted small text-uppercase fw-semibold">Entidade afetada</div>
+                            <div>
+                                <code th:text="${log.entidade}"></code>
+                                <span th:if="${log.entidadeId != null}">#<span th:text="${log.entidadeId}"></span></span>
+                                <a th:if="${log.entidade == 'Movimentacao' and log.entidadeId != null}"
+                                   th:href="@{|/movimentacoes/${log.entidadeId}|}"
+                                   class="btn btn-sm btn-link p-0 ms-2">
+                                    Abrir movimentação <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted small text-uppercase fw-semibold">Setor</div>
+                            <div th:if="${log.setor != null}" th:text="${log.setor}"></div>
+                            <div th:if="${log.setor == null}" class="placeholder-dash">—</div>
+                        </div>
+                    </div>
+
+                    <hr/>
+
+                    <div class="text-muted small text-uppercase fw-semibold mb-2">Detalhes</div>
+                    <pre class="bg-body-tertiary p-3 rounded small"
+                         style="white-space:pre-wrap; word-break:break-word;"
+                         th:text="${log.detalhes} ?: '(sem detalhes)'"></pre>
+
+                    <hr/>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="text-muted small text-uppercase fw-semibold">IP de origem</div>
+                            <div class="font-monospace" th:text="${log.ipOrigem} ?: '—'"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="text-muted small text-uppercase fw-semibold">
+                                Idempotency-Key
+                                <i class="bi bi-info-circle"
+                                   title="UUID enviado pelo cliente (mobile) para evitar processar a mesma operação duas vezes em retries de rede."></i>
+                            </div>
+                            <div class="font-monospace small" th:text="${log.idempotencyKey} ?: '—'"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Histórico da mesma entidade — contexto extra -->
+            <div th:if="${log.entidadeId != null}" class="card mt-3">
+                <div class="card-body">
+                    <h6 class="text-muted small text-uppercase fw-semibold mb-3">
+                        Ver histórico completo desta entidade
+                    </h6>
+                    <a th:href="@{/auditoria(entidade=${log.entidade}, entidadeId=${log.entidadeId})}"
+                       class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-clock-history"></i>
+                        Todos os eventos de
+                        <span class="font-monospace" th:text="${log.entidade}"></span>
+                        #<span th:text="${log.entidadeId}"></span>
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

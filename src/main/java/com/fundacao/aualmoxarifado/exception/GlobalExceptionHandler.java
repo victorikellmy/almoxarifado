@@ -40,6 +40,37 @@ public class GlobalExceptionHandler {
                 .body(ErroResponse.of(409, "Regra de negócio violada", ex.getMessage(), req.getRequestURI()));
     }
 
+    @ExceptionHandler(SkuFormatoInvalidoException.class)
+    public ResponseEntity<ErroResponse> handleSkuInvalido(SkuFormatoInvalidoException ex,
+                                                         HttpServletRequest req) {
+        return ResponseEntity.badRequest()
+                .body(ErroResponse.of(400, "SKU em formato inválido", ex.getMessage(), req.getRequestURI()));
+    }
+
+    /**
+     * Ponte para exceções "cruas" lançadas pelas camadas de service que ainda
+     * não usam as exceções de domínio do projeto. {@link IllegalArgumentException}
+     * indica dado de entrada inválido → 400.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErroResponse> handleIllegalArgument(IllegalArgumentException ex,
+                                                              HttpServletRequest req) {
+        return ResponseEntity.badRequest()
+                .body(ErroResponse.of(400, "Requisição inválida", ex.getMessage(), req.getRequestURI()));
+    }
+
+    /**
+     * Ponte para {@link IllegalStateException} lançada pelo MovimentacaoService
+     * em validações de estoque (ex. saldo insuficiente) → 409 Conflict.
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErroResponse> handleIllegalState(IllegalStateException ex,
+                                                           HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErroResponse.of(409, "Operação não permitida no estado atual",
+                        ex.getMessage(), req.getRequestURI()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErroResponse> handleValidation(MethodArgumentNotValidException ex,
                                                         HttpServletRequest req) {

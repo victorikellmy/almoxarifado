@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Relatório mensal')}"></head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('rel-mensal')}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout ::
+                              topbar('Relatório mensal',
+                                     'Movimentações, custos e consumo do mês')}"></header>
+
+        <div class="app-content">
+
+            <!-- Filtro -->
+            <div class="card mb-3">
+                <div class="card-pad">
+                    <form method="get" th:action="@{/relatorios/mensal}" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Ano</label>
+                            <input type="number" name="ano" class="form-control" min="2000" max="2100"
+                                   th:value="${ano}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Mês</label>
+                            <select name="mes" class="form-select">
+                                <option th:each="m : ${#numbers.sequence(1,12)}"
+                                        th:value="${m}"
+                                        th:text="${m + ' — ' + #strings.capitalize(#temporals.format(T(java.time.LocalDate).of(2024, m, 1), 'MMMM'))}"
+                                        th:selected="${m == mes}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-funnel"></i> Filtrar
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="btn-group w-100">
+                                <a class="btn btn-outline-secondary"
+                                   th:href="@{|/api/relatorios/mensal/export?formato=XLSX&ano=${ano}&mes=${mes}|}">
+                                    <i class="bi bi-file-earmark-excel"></i> XLSX
+                                </a>
+                                <a class="btn btn-outline-secondary"
+                                   th:href="@{|/api/relatorios/mensal/export?formato=CSV&ano=${ano}&mes=${mes}|}">
+                                    CSV
+                                </a>
+                                <a class="btn btn-outline-secondary"
+                                   th:href="@{|/api/relatorios/mensal/export?formato=PDF&ano=${ano}&mes=${mes}|}">
+                                    PDF
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                    <p class="text-muted small mb-0 mt-3">
+                        <i class="bi bi-info-circle"></i>
+                        Inclui movimentações <strong>aprovadas, entregues</strong> e compras diretas.
+                        Pendentes e rejeitadas são ignoradas.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Cabeçalho do período -->
+            <div class="card mb-3">
+                <div class="card-pad">
+                    <h4 class="mb-1"
+                        th:text="|Resumo de ${dados.nomeMes} / ${dados.ano}|">Resumo</h4>
+                    <small class="text-muted">Indicadores agregados do mês</small>
+                </div>
+            </div>
+
+            <!-- Cards de resumo por tipo -->
+            <div class="row g-3 mb-3">
+                <div class="col-md-4" th:each="r : ${dados.resumoPorTipo}">
+                    <div class="stat-card">
+                        <div class="stat-icon"
+                             th:classappend="${r.tipo().name() == 'ENTRADA'} ? 'bg-success-soft'
+                                          : (${r.tipo().name() == 'SAIDA'} ? 'bg-info-soft' : 'bg-brand')">
+                            <i class="bi"
+                               th:classappend="${r.tipo().name() == 'ENTRADA'} ? 'bi-box-arrow-in-down'
+                                            : (${r.tipo().name() == 'SAIDA'} ? 'bi-box-arrow-up' : 'bi-cart3')"></i>
+                        </div>
+                        <div>
+                            <p class="stat-label"
+                               th:text="${r.tipo().name() == 'ENTRADA'} ? 'Entradas'
+                                      : (${r.tipo().name() == 'SAIDA'} ? 'Saídas' : 'Compras diretas')"></p>
+                            <p class="stat-value" th:text="${r.qtdMovimentacoes()}">0</p>
+                            <p class="stat-hint">
+                                <span th:text="${r.totalItens()}">0</span> itens ·
+                                <span th:text="${'R$ ' + #numbers.formatDecimal(r.valorTotal(), 1, 'POINT', 2, 'COMMA')}">R$ 0,00</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12" th:if="${#lists.isEmpty(dados.resumoPorTipo)}">
+                    <div class="card card-pad empty-state">
+                        <i class="bi bi-inbox d-block mb-2"></i>
+                        Nenhuma movimentação efetivada neste mês.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total geral -->
+            <div class="card mb-3" th:if="${not #lists.isEmpty(dados.resumoPorTipo)}">
+                <div class="card-pad d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <div class="text-muted small text-uppercase" style="letter-spacing:.05em;">Total geral do mês</div>
+                        <div class="d-flex gap-4 mt-1 align-items-baseline">
+                            <span><strong th:text="${dados.totalGeral().qtdMovimentacoes()}">0</strong>
+                                  <small class="text-muted">movimentações</small></span>
+                            <span><strong th:text="${dados.totalGeral().totalItens()}">0</strong>
+                                  <small class="text-muted">itens</small></span>
+                        </div>
+                    </div>
+                    <div class="fs-3 fw-bold"
+                         th:text="${'R$ ' + #numbers.formatDecimal(dados.totalGeral().valorTotal(), 1, 'POINT', 2, 'COMMA')}">R$ 0,00</div>
+                </div>
+            </div>
+
+            <!-- Top 10 materiais -->
+            <div class="card table-card mb-3">
+                <div class="table-card-head">
+                    <div>
+                        <h5 class="mb-0">Top materiais consumidos</h5>
+                        <small class="text-muted">Saídas + compras diretas, ordenados por quantidade</small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th style="width:60px">#</th>
+                            <th>SKU</th>
+                            <th>Material</th>
+                            <th>Unidade</th>
+                            <th class="text-end">Quantidade</th>
+                            <th class="text-end">Valor total</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="c, it : ${dados.topMateriais}">
+                            <td class="text-muted" th:text="${it.count}"></td>
+                            <td><code th:text="${c.sku()} ?: '—'"></code></td>
+                            <td class="fw-semibold" th:text="${c.nome()}"></td>
+                            <td class="text-muted" th:text="${c.unidadeMedida()} ?: '—'"></td>
+                            <td class="text-end fw-bold" th:text="${c.totalQuantidade()}"></td>
+                            <td class="text-end"
+                                th:text="${'R$ ' + #numbers.formatDecimal(c.valorTotal(), 1, 'POINT', 2, 'COMMA')}"></td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(dados.topMateriais)}">
+                            <td colspan="6" class="empty-state">
+                                <i class="bi bi-inbox d-block mb-2"></i>
+                                Sem consumo registrado no mês.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Gasto por setor -->
+            <div class="card table-card">
+                <div class="table-card-head">
+                    <div>
+                        <h5 class="mb-0">Gasto por setor</h5>
+                        <small class="text-muted">Custo total atribuído a cada setor no mês</small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th style="width:60px">#</th>
+                            <th>Setor</th>
+                            <th>Centro de custo</th>
+                            <th class="text-end">Itens</th>
+                            <th class="text-end">Valor total</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="g, it : ${dados.gastoPorSetor}">
+                            <td class="text-muted" th:text="${it.count}"></td>
+                            <td class="fw-semibold" th:text="${g.nomeSetor()}"></td>
+                            <td>
+                                <span th:if="${g.codigoCentroCusto()}" class="badge bg-secondary"
+                                      th:text="${g.codigoCentroCusto()}"></span>
+                                <span th:unless="${g.codigoCentroCusto()}" class="text-muted">—</span>
+                            </td>
+                            <td class="text-end" th:text="${g.totalQuantidade()}"></td>
+                            <td class="text-end fw-bold"
+                                th:text="${'R$ ' + #numbers.formatDecimal(g.valorTotal(), 1, 'POINT', 2, 'COMMA')}"></td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(dados.gastoPorSetor)}">
+                            <td colspan="5" class="empty-state">
+                                <i class="bi bi-inbox d-block mb-2"></i>
+                                Nenhum gasto por setor no mês.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>
