@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Áreas')}"></head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('areas')}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout :: topbar('Áreas', 'Categorias macro do almoxarifado (RF17 — Nível 1)')}"></header>
+
+        <div class="app-content">
+
+            <div class="alert alert-danger" th:if="${erro}" th:text="${erro}"></div>
+
+            <!-- Form inline de cadastro -->
+            <div class="card mb-4">
+                <div class="card-pad">
+                    <h5 class="mb-1"><i class="bi bi-plus-circle me-1"></i> Nova área</h5>
+                    <p class="text-muted small mb-3">
+                        A <strong>sigla</strong> é usada como prefixo do SKU dos produtos
+                        (ex.: <code>ODO-CON-00001</code>).
+                    </p>
+                    <form th:action="@{/areas}" th:object="${area}" method="post">
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label class="form-label">Nome</label>
+                                <input type="text" class="form-control"
+                                       placeholder="Ex.: Odontologia"
+                                       th:field="*{nome}" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Sigla</label>
+                                <input type="text" class="form-control text-uppercase"
+                                       placeholder="ODO" maxlength="5"
+                                       pattern="[A-Za-z0-9]{2,5}"
+                                       th:field="*{sigla}" required>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">Descrição</label>
+                                <input type="text" class="form-control"
+                                       placeholder="Opcional"
+                                       th:field="*{descricao}">
+                            </div>
+                            <div class="col-md-1 d-flex align-items-end">
+                                <button class="btn btn-primary w-100">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabela -->
+            <div class="card table-card">
+                <div class="table-card-head">
+                    <div>
+                        <h5 class="mb-0">Áreas cadastradas</h5>
+                        <small class="text-muted"><span th:text="${#lists.size(areas)}"></span> registro(s)</small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Sigla</th>
+                            <th>Nome</th>
+                            <th>Descrição</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="a : ${areas}">
+                            <td class="text-muted" th:text="${a.id}"></td>
+                            <td><span class="badge bg-primary" th:text="${a.sigla}"></span></td>
+                            <td class="fw-semibold" th:text="${a.nome}"></td>
+                            <td class="text-muted" th:text="${a.descricao} ?: '—'"></td>
+                            <td class="text-end">
+                                <form th:action="@{|/areas/${a.id}/excluir|}" method="post" class="d-inline"
+                                      onsubmit="return confirm('Excluir esta área?');">
+                                    <button class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(areas)}">
+                            <td colspan="5" class="empty-state">
+                                <i class="bi bi-inbox d-block mb-2"></i>
+                                Nenhuma área cadastrada ainda.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

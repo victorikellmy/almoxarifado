@@ -2,21 +2,31 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '4.0.6'
     id 'io.spring.dependency-management' version '1.1.7'
-    id 'com.netflix.dgs.codegen' version '8.3.0'
-    id 'org.graalvm.buildtools.native' version '0.11.5'
 }
 
-group = 'com.fundacao'
+group = 'com.fpto'
 version = '0.0.1-SNAPSHOT'
 description = 'aualmoxarifado'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(26)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
 repositories {
+    mavenLocal()   // atalho de dev (se a fpto-commons estiver no ~/.m2)
+    // GitHub Packages — fpto-commons (somente grupo com.fpto; demais deps vêm do mavenCentral).
+    // Credenciais via env GITHUB_ACTOR/GITHUB_TOKEN ou props gpr.user/gpr.key (token com read:packages).
+    maven {
+        name = 'GitHubPackages'
+        url = uri('https://maven.pkg.github.com/victorikellmy/fpto-commons')
+        credentials {
+            username = System.getenv('GITHUB_ACTOR') ?: findProperty('gpr.user')
+            password = System.getenv('GITHUB_TOKEN') ?: findProperty('gpr.key')
+        }
+        content { includeGroup 'com.fpto' }
+    }
     mavenCentral()
 }
 
@@ -25,11 +35,19 @@ ext {
 }
 
 dependencies {
+    // Contratos e cross-cutting compartilhados do ecossistema FPTO
+    implementation 'com.fpto:fpto-commons:0.1.0'
+
     implementation 'org.springframework.modulith:spring-modulith-starter-core'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    // Migrações de banco (Flyway). Boot 4 modularizou as autoconfigs:
+    // o módulo spring-boot-flyway precisa ser declarado explicitamente.
+    implementation 'org.springframework.boot:spring-boot-flyway'
+    implementation 'org.flywaydb:flyway-core'
+    runtimeOnly    'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'com.h2database:h2'
     runtimeOnly 'org.postgresql:postgresql'
     compileOnly 'org.projectlombok:lombok'
@@ -48,12 +66,6 @@ dependencyManagement {
     imports {
         mavenBom "org.springframework.modulith:spring-modulith-bom:${springModulithVersion}"
     }
-}
-
-generateJava {
-    schemaPaths = ["${projectDir}/src/main/resources/graphql-client"]
-    packageName = 'com.fundacao.aualmoxarifado.codegen'
-    generateClient = true
 }
 
 tasks.named('test') {

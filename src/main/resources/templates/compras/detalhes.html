@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Compra')}"></head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('compras')}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout :: topbar('Detalhes da compra', 'Visão completa da pré-compra e seus anexos')}"></header>
+
+        <div class="app-content">
+
+            <div class="page-header">
+                <div>
+                    <h2 class="d-inline-block me-3">Compra #<span th:text="${compra.id}"></span></h2>
+                    <span class="status-pill"
+                          th:classappend="${compra.status.name() == 'AGUARDANDO_COMPRA'} ? 'text-warning'
+                                        : (${compra.status.name() == 'COMPRA_REALIZADA'} ? 'text-success'
+                                        : 'text-danger')"
+                          th:style="${compra.status.name() == 'AGUARDANDO_COMPRA'} ? 'background:#fef3c7;'
+                                  : (${compra.status.name() == 'COMPRA_REALIZADA'} ? 'background:#d1fae5;'
+                                  : 'background:#fee2e2;')"
+                          th:text="${compra.status}"></span>
+                </div>
+                <div class="d-flex gap-2">
+                    <a th:if="${compra.status.name() == 'AGUARDANDO_COMPRA'}"
+                       class="btn btn-success" th:href="@{|/compras/${compra.id}/baixa|}">
+                        <i class="bi bi-check2-square"></i> Baixar
+                    </a>
+                    <form th:if="${compra.status.name() == 'AGUARDANDO_COMPRA'}"
+                          th:action="@{|/compras/${compra.id}/cancelar|}" method="post"
+                          onsubmit="return confirm('Tem certeza que deseja cancelar esta pré-compra?');">
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="bi bi-x-circle"></i> Cancelar pré-compra
+                        </button>
+                    </form>
+                    <a href="/compras" class="btn btn-outline-secondary">Voltar</a>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+                <div class="col-md-7">
+                    <div class="card h-100">
+                        <div class="card-pad">
+                            <h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.05em;">
+                                Dados da compra
+                            </h6>
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4 text-muted">Tipo</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge bg-primary" th:if="${compra.tipo.name() == 'DIRETA'}">Direta</span>
+                                    <span class="badge bg-secondary" th:if="${compra.tipo.name() == 'ESTOQUE'}">Estoque</span>
+                                </dd>
+                                <dt class="col-sm-4 text-muted">Setor solicitante</dt>
+                                <dd class="col-sm-8" th:text="${compra.setorSolicitante != null ? compra.setorSolicitante.nome : '—'}"></dd>
+                                <dt class="col-sm-4 text-muted">Fornecedor</dt>
+                                <dd class="col-sm-8" th:text="${compra.fornecedor} ?: '—'"></dd>
+                                <dt class="col-sm-4 text-muted">Solicitada em</dt>
+                                <dd class="col-sm-8" th:text="${#temporals.format(compra.dataSolicitacao, 'dd/MM/yyyy HH:mm')}"></dd>
+                                <dt class="col-sm-4 text-muted">Recebida em</dt>
+                                <dd class="col-sm-8"
+                                    th:text="${compra.dataRecebimento != null ? #temporals.format(compra.dataRecebimento, 'dd/MM/yyyy HH:mm') : '—'}"></dd>
+                                <dt class="col-sm-4 text-muted">Observação</dt>
+                                <dd class="col-sm-8" th:text="${compra.observacao} ?: '—'"></dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-5">
+                    <div class="card h-100">
+                        <div class="card-pad">
+                            <h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.05em;">
+                                Valores
+                            </h6>
+                            <dl class="row mb-0">
+                                <dt class="col-sm-6 text-muted">Estimado</dt>
+                                <dd class="col-sm-6 text-end" th:text="${#numbers.formatCurrency(compra.valorEstimado)}"></dd>
+                                <dt class="col-sm-6 text-muted">Final</dt>
+                                <dd class="col-sm-6 text-end fw-bold"
+                                    th:text="${compra.valorRealFinal != null ? #numbers.formatCurrency(compra.valorRealFinal) : '—'}"></dd>
+                                <dt class="col-sm-6 text-muted">Nº da NF</dt>
+                                <dd class="col-sm-6 text-end">
+                                    <code th:if="${compra.numeroNotaFiscal}" th:text="${compra.numeroNotaFiscal}"></code>
+                                    <span th:unless="${compra.numeroNotaFiscal}" class="text-muted">—</span>
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-3 table-card">
+                <div class="table-card-head">
+                    <div>
+                        <h5 class="mb-0">Itens</h5>
+                        <small class="text-muted"><span th:text="${#lists.size(compra.itens)}"></span> linha(s)</small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>Material</th>
+                            <th class="text-end">Qtd.</th>
+                            <th class="text-end">Valor unitário</th>
+                            <th class="text-end">Subtotal</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="i : ${compra.itens}">
+                            <td class="fw-semibold" th:text="${i.material.nome}"></td>
+                            <td class="text-end" th:text="${i.quantidade}"></td>
+                            <td class="text-end" th:text="${#numbers.formatCurrency(i.valorUnitario)}"></td>
+                            <td class="text-end fw-semibold" th:text="${#numbers.formatCurrency(i.subtotal)}"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-pad">
+                    <h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.05em;">
+                        Anexos (RF16)
+                    </h6>
+                    <div th:if="${not #lists.isEmpty(compra.anexos)}" class="list-group">
+                        <a th:each="a : ${compra.anexos}"
+                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+                           th:href="@{|/compras/${compra.id}/anexos/${a.id}/download|}" target="_blank">
+                            <span class="d-flex align-items-center gap-2">
+                                <i class="bi bi-file-earmark-pdf text-danger fs-4"></i>
+                                <span>
+                                    <span class="badge bg-secondary me-2" th:text="${a.tipo}"></span>
+                                    <span th:text="${a.nomeOriginal}"></span>
+                                    <small class="text-muted d-block"
+                                           th:text="${'Enviado em ' + #temporals.format(a.dataUpload, 'dd/MM/yyyy HH:mm')}"></small>
+                                </span>
+                            </span>
+                            <i class="bi bi-download"></i>
+                        </a>
+                    </div>
+                    <p class="text-muted mb-0" th:if="${#lists.isEmpty(compra.anexos)}">
+                        <i class="bi bi-paperclip"></i> Nenhum anexo enviado.
+                    </p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

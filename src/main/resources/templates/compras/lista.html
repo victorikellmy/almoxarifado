@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${titulo})}"></head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar(${filtro == 'aguardando' ? 'compras-fila' : 'compras'})}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout :: topbar(${titulo}, 'Pré-compras e baixas com nota fiscal (RF14/RF15)')}"></header>
+
+        <div class="app-content">
+
+            <div class="page-header">
+                <ul class="nav nav-pills">
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           th:classappend="${filtro == 'todas'} ? 'active' : ''"
+                           href="/compras">Todas</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link"
+                           th:classappend="${filtro == 'aguardando'} ? 'active' : ''"
+                           href="/compras/aguardando">
+                            <i class="bi bi-hourglass-split"></i> Aguardando compra
+                        </a>
+                    </li>
+                </ul>
+                <a class="btn btn-primary" href="/compras/nova">
+                    <i class="bi bi-plus-lg"></i> Nova pré-compra
+                </a>
+            </div>
+
+            <div class="card table-card">
+                <div class="table-card-head">
+                    <div>
+                        <h5 class="mb-0" th:text="${titulo}"></h5>
+                        <small class="text-muted"><span th:text="${#lists.size(compras)}"></span> registro(s)</small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Solicitada em</th>
+                            <th>Tipo</th>
+                            <th>Setor solicitante</th>
+                            <th class="text-end">Itens</th>
+                            <th class="text-end">Valor estimado</th>
+                            <th class="text-end">Valor final</th>
+                            <th>NF</th>
+                            <th>Status</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="c : ${compras}">
+                            <td class="text-muted" th:text="${c.id}"></td>
+                            <td class="text-muted small"
+                                th:text="${#temporals.format(c.dataSolicitacao, 'dd/MM/yyyy HH:mm')}"></td>
+                            <td>
+                                <span th:if="${c.tipo.name() == 'DIRETA'}" class="badge bg-primary">
+                                    <i class="bi bi-arrow-right-circle"></i> Direta
+                                </span>
+                                <span th:if="${c.tipo.name() == 'ESTOQUE'}" class="badge bg-secondary">
+                                    <i class="bi bi-boxes"></i> Estoque
+                                </span>
+                            </td>
+                            <td th:text="${c.setorSolicitante != null ? c.setorSolicitante.nome : '—'}"></td>
+                            <td class="text-end" th:text="${#lists.size(c.itens)}"></td>
+                            <td class="text-end text-muted" th:text="${#numbers.formatCurrency(c.valorEstimado)}"></td>
+                            <td class="text-end fw-semibold"
+                                th:text="${c.valorRealFinal != null ? #numbers.formatCurrency(c.valorRealFinal) : '—'}"></td>
+                            <td><code th:if="${c.numeroNotaFiscal}" th:text="${c.numeroNotaFiscal}"></code>
+                                <span th:unless="${c.numeroNotaFiscal}" class="text-muted">—</span>
+                            </td>
+                            <td>
+                                <span class="status-pill"
+                                      th:classappend="${c.status.name() == 'AGUARDANDO_COMPRA'} ? 'text-warning'
+                                                    : (${c.status.name() == 'COMPRA_REALIZADA'} ? 'text-success'
+                                                    : 'text-danger')"
+                                      th:style="${c.status.name() == 'AGUARDANDO_COMPRA'} ? 'background:#fef3c7;'
+                                              : (${c.status.name() == 'COMPRA_REALIZADA'} ? 'background:#d1fae5;'
+                                              : 'background:#fee2e2;')"
+                                      th:text="${c.status}"></span>
+                            </td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-secondary" th:href="@{|/compras/${c.id}|}">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a th:if="${c.status.name() == 'AGUARDANDO_COMPRA'}"
+                                   class="btn btn-sm btn-success"
+                                   th:href="@{|/compras/${c.id}/baixa|}">
+                                    <i class="bi bi-check2-square"></i> Baixar
+                                </a>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(compras)}">
+                            <td colspan="10" class="empty-state">
+                                <i class="bi bi-cart-x d-block mb-2"></i>
+                                Nenhuma compra encontrada.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>
