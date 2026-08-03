@@ -93,6 +93,44 @@ public class SkuGeneratorService {
         return sku;
     }
 
+    /**
+     * Bloco de sequenciais reservado por {@link #reservarBloco}. O chamador
+     * materializa cada SKU com {@link #sku(int)} sem voltar ao banco.
+     */
+    public record BlocoSku(String siglaArea, String siglaSub, int inicio) {
+        public String sku(int offset) {
+            return montarSku(siglaArea, siglaSub, inicio + offset);
+        }
+    }
+
+    /**
+     * Reserva {@code quantidade} sequenciais de uma vez, numa única transação
+     * com lock pessimista — usado pela importação em lote, onde gerar SKU um a
+     * um serializaria todas as linhas no mesmo lock (1 transação + 1
+     * SELECT FOR UPDATE por linha).
+     *
+     * <p>Mesma garantia de unicidade do fluxo unitário: o incremento é
+     * commitado mesmo se a gravação dos materiais falhar depois (gap na
+     * sequência, nunca reuso).</p>
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public BlocoSku reservarBloco(Long subcategoriaId, int quantidade) {
+        if (quantidade <= 0) {
+            throw new IllegalArgumentException("Quantidade de SKUs a reservar deve ser positiva.");
+        }
+        Subcategoria sub = subcategoriaRepository.findByIdComLock(subcategoriaId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Subcategoria id=" + subcategoriaId + " não encontrada para gerar SKU."));
+
+        int inicio = sub.getProximoSequencial();
+        sub.setProximoSequencial(inicio + quantidade);
+        subcategoriaRepository.saveAndFlush(sub);
+
+        log.debug("[SKU] Reservado bloco {}..{} para subcategoria id={}",
+                inicio, inicio + quantidade - 1, subcategoriaId);
+        return new BlocoSku(sub.getArea().getSigla(), sub.getSigla(), inicio);
+    }
+
     /** Monta a string final, isolado para facilitar testes. */
     private static String montarSku(String siglaArea, String siglaSub, int sequencial) {
         // %05d → preenche com zeros à esquerda até 5 dígitos.

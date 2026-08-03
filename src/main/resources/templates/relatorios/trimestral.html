@@ -35,20 +35,9 @@
                             </button>
                         </div>
                         <div class="col-md-3">
-                            <div class="btn-group w-100">
-                                <a class="btn btn-outline-secondary"
-                                   th:href="@{|/api/relatorios/trimestral/export?formato=XLSX&ano=${ano}&trimestre=${trimestre}|}">
-                                    <i class="bi bi-file-earmark-excel"></i> XLSX
-                                </a>
-                                <a class="btn btn-outline-secondary"
-                                   th:href="@{|/api/relatorios/trimestral/export?formato=CSV&ano=${ano}&trimestre=${trimestre}|}">
-                                    CSV
-                                </a>
-                                <a class="btn btn-outline-secondary"
-                                   th:href="@{|/api/relatorios/trimestral/export?formato=PDF&ano=${ano}&trimestre=${trimestre}|}">
-                                    PDF
-                                </a>
-                            </div>
+                            <div th:replace="~{fragments/relatorio ::
+                                              exportBar('/api/relatorios/trimestral/export',
+                                                        |ano=${ano}&trimestre=${trimestre}|)}"></div>
                         </div>
                     </form>
                 </div>
@@ -56,27 +45,8 @@
 
             <!-- Cards de resumo por tipo (somatório do trimestre) -->
             <div class="row g-3 mb-3">
-                <div class="col-md-3" th:each="r : ${dados.resumoPorTipo}">
-                    <div class="stat-card">
-                        <div class="stat-icon"
-                             th:classappend="${r.tipo().name() == 'ENTRADA'} ? 'bg-success-soft'
-                                          : (${r.tipo().name() == 'SAIDA'} ? 'bg-info-soft' : 'bg-brand')">
-                            <i class="bi"
-                               th:classappend="${r.tipo().name() == 'ENTRADA'} ? 'bi-box-arrow-in-down'
-                                            : (${r.tipo().name() == 'SAIDA'} ? 'bi-box-arrow-up' : 'bi-cart3')"></i>
-                        </div>
-                        <div>
-                            <p class="stat-label"
-                               th:text="${r.tipo().name() == 'ENTRADA'} ? 'Entradas'
-                                      : (${r.tipo().name() == 'SAIDA'} ? 'Saídas' : 'Compras diretas')"></p>
-                            <p class="stat-value" th:text="${r.qtdMovimentacoes()}">0</p>
-                            <p class="stat-hint">
-                                <span th:text="${r.totalItens()}">0</span> itens ·
-                                <span th:text="${'R$ ' + #numbers.formatDecimal(r.valorTotal(), 1, 'POINT', 2, 'COMMA')}">R$ 0,00</span>
-                            </p>
-                        </div>
-                    </div>
-                </div>
+                <div th:replace="~{fragments/relatorio ::
+                                  cardsResumoTipo(${dados.resumoPorTipo}, 'col-md-3')}"></div>
                 <div class="col-md-3">
                     <div class="stat-card">
                         <div class="stat-icon bg-warning-soft"><i class="bi bi-cash-stack"></i></div>
@@ -99,64 +69,9 @@
                     </div>
                 </div>
                 <div class="table-responsive">
-                    <table class="table">
-                        <thead>
-                        <tr>
-                            <th>Mês</th>
-                            <th class="text-end">Entradas</th>
-                            <th class="text-end">Saídas</th>
-                            <th class="text-end">Compras diretas</th>
-                            <th class="text-end">Total movs</th>
-                            <th class="text-end">Total itens</th>
-                            <th class="text-end">Valor entradas</th>
-                            <th class="text-end">Valor saídas</th>
-                            <th class="text-end">Valor compras</th>
-                            <th class="text-end">Valor total</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr th:each="m : ${dados.meses}">
-                            <td class="fw-semibold"
-                                th:text="${#strings.capitalize(#temporals.format(T(java.time.LocalDate).of(m.ano(), m.mes(), 1), 'MMMM/yyyy'))}"></td>
-                            <td class="text-end" th:text="${m.qtdEntradas()}"></td>
-                            <td class="text-end" th:text="${m.qtdSaidas()}"></td>
-                            <td class="text-end" th:text="${m.qtdComprasDiretas()}"></td>
-                            <td class="text-end fw-semibold" th:text="${m.qtdTotalMovimentacoes()}"></td>
-                            <td class="text-end" th:text="${m.totalItens()}"></td>
-                            <td class="text-end"
-                                th:text="${'R$ ' + #numbers.formatDecimal(m.valorEntradas(), 1, 'POINT', 2, 'COMMA')}"></td>
-                            <td class="text-end"
-                                th:text="${'R$ ' + #numbers.formatDecimal(m.valorSaidas(), 1, 'POINT', 2, 'COMMA')}"></td>
-                            <td class="text-end"
-                                th:text="${'R$ ' + #numbers.formatDecimal(m.valorComprasDiretas(), 1, 'POINT', 2, 'COMMA')}"></td>
-                            <td class="text-end fw-bold"
-                                th:text="${'R$ ' + #numbers.formatDecimal(m.valorTotal(), 1, 'POINT', 2, 'COMMA')}"></td>
-                        </tr>
-                        </tbody>
-                        <tfoot th:if="${not #lists.isEmpty(dados.meses)}">
-                        <tr class="fw-bold">
-                            <td>Total trimestre</td>
-                            <td class="text-end"
-                                th:text="${#aggregates.sum(dados.meses.![qtdEntradas()])}"></td>
-                            <td class="text-end"
-                                th:text="${#aggregates.sum(dados.meses.![qtdSaidas()])}"></td>
-                            <td class="text-end"
-                                th:text="${#aggregates.sum(dados.meses.![qtdComprasDiretas()])}"></td>
-                            <td class="text-end"
-                                th:text="${#aggregates.sum(dados.meses.![qtdTotalMovimentacoes()])}"></td>
-                            <td class="text-end"
-                                th:text="${#aggregates.sum(dados.meses.![totalItens()])}"></td>
-                            <td class="text-end"
-                                th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(dados.meses.![valorEntradas()]), 1, 'POINT', 2, 'COMMA')}"></td>
-                            <td class="text-end"
-                                th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(dados.meses.![valorSaidas()]), 1, 'POINT', 2, 'COMMA')}"></td>
-                            <td class="text-end"
-                                th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(dados.meses.![valorComprasDiretas()]), 1, 'POINT', 2, 'COMMA')}"></td>
-                            <td class="text-end"
-                                th:text="${'R$ ' + #numbers.formatDecimal(#aggregates.sum(dados.meses.![valorTotal()]), 1, 'POINT', 2, 'COMMA')}"></td>
-                        </tr>
-                        </tfoot>
-                    </table>
+                    <table th:replace="~{fragments/relatorio ::
+                                        tabelaMeses(${dados.meses}, ${dados.totaisMeses()},
+                                                    'MMMM/yyyy', 'Total trimestre')}"></table>
                 </div>
             </div>
 
@@ -169,37 +84,10 @@
                     </div>
                 </div>
                 <div class="table-responsive">
-                    <table class="table">
-                        <thead>
-                        <tr>
-                            <th style="width:60px">#</th>
-                            <th>Setor</th>
-                            <th>Centro de custo</th>
-                            <th class="text-end">Itens</th>
-                            <th class="text-end">Valor total</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr th:each="g, it : ${dados.gastoPorSetor}">
-                            <td class="text-muted" th:text="${it.count}"></td>
-                            <td class="fw-semibold" th:text="${g.nomeSetor()}"></td>
-                            <td>
-                                <span th:if="${g.codigoCentroCusto()}" class="badge bg-secondary"
-                                      th:text="${g.codigoCentroCusto()}"></span>
-                                <span th:unless="${g.codigoCentroCusto()}" class="text-muted">—</span>
-                            </td>
-                            <td class="text-end" th:text="${g.totalQuantidade()}"></td>
-                            <td class="text-end fw-bold"
-                                th:text="${'R$ ' + #numbers.formatDecimal(g.valorTotal(), 1, 'POINT', 2, 'COMMA')}"></td>
-                        </tr>
-                        <tr th:if="${#lists.isEmpty(dados.gastoPorSetor)}">
-                            <td colspan="5" class="empty-state">
-                                <i class="bi bi-inbox d-block mb-2"></i>
-                                Sem gastos por setor no trimestre.
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
+                    <table th:replace="~{fragments/relatorio ::
+                                        tabelaGastoPorSetor(${dados.gastoPorSetor},
+                                                            'Itens', 'Valor total', 'bg-secondary',
+                                                            'Sem gastos por setor no trimestre.')}"></table>
                 </div>
             </div>
 

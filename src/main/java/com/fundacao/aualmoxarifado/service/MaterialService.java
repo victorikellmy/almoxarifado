@@ -18,6 +18,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class MaterialService {
 
     private final MaterialRepository materialRepository;
@@ -102,5 +103,10 @@ public class MaterialService {
     /** RN06 - Lista materiais com estoque abaixo (ou igual) do mínimo, para alertas no frontend. */
     public List<Material> alertasDeEstoque() {
         return materialRepository.findEmAlertaDeEstoque();
+    }
+
+    /** RN06 - Só a contagem (COUNT no banco), para telas que exibem apenas o número. */
+    public long contarAlertasDeEstoque() {
+        return materialRepository.countEmAlertaDeEstoque();
     }
 }

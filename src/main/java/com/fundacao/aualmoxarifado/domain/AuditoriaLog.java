@@ -27,8 +27,10 @@ import java.time.LocalDateTime;
 @Table(name = "auditoria_log",
        indexes = {
                @Index(name = "idx_audit_timestamp", columnList = "timestamp"),
-               @Index(name = "idx_audit_acao",      columnList = "acao"),
-               @Index(name = "idx_audit_usuario",   columnList = "usuario"),
+               // Compostos: as queries reais filtram usuario/acao SEMPRE combinados
+               // com intervalo de timestamp — um índice simples cobriria só metade.
+               @Index(name = "idx_audit_acao",      columnList = "acao,timestamp"),
+               @Index(name = "idx_audit_usuario",   columnList = "usuario,timestamp"),
                @Index(name = "idx_audit_entidade",  columnList = "entidade,entidade_id")
        })
 @EntityListeners(AuditingEntityListener.class)

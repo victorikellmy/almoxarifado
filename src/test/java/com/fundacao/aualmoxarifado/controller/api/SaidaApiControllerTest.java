@@ -72,7 +72,7 @@ class SaidaApiControllerTest {
     @Test
     void registrarSaida_fluxoFeliz_retorna200ComMovimentacaoId() {
         when(setorRepository.findById(10L)).thenReturn(Optional.of(setor));
-        when(materialRepository.findByCodigoSku("PAP-ESC-00001")).thenReturn(Optional.of(caneta));
+        when(materialRepository.findByCodigoSkuIn(List.of("PAP-ESC-00001"))).thenReturn(List.of(caneta));
         when(movimentacaoService.registrarSaida(any(), any(), any(), anyList()))
                 .thenReturn(Movimentacao.builder()
                         .id(123L)
@@ -97,7 +97,7 @@ class SaidaApiControllerTest {
     @Test
     void registrarSaida_skuMinusculo_eUpcaseParaLookup() {
         when(setorRepository.findById(10L)).thenReturn(Optional.of(setor));
-        when(materialRepository.findByCodigoSku("PAP-ESC-00001")).thenReturn(Optional.of(caneta));
+        when(materialRepository.findByCodigoSkuIn(List.of("PAP-ESC-00001"))).thenReturn(List.of(caneta));
         when(movimentacaoService.registrarSaida(any(), any(), any(), anyList()))
                 .thenReturn(movimentacaoDummy());
 
@@ -106,7 +106,7 @@ class SaidaApiControllerTest {
 
         controller.registrarSaida(req, null);
 
-        verify(materialRepository).findByCodigoSku("PAP-ESC-00001");
+        verify(materialRepository).findByCodigoSkuIn(List.of("PAP-ESC-00001"));
     }
 
     @Test
@@ -136,7 +136,7 @@ class SaidaApiControllerTest {
     @Test
     void registrarSaida_skuNaoCadastrado_lancaRecursoNaoEncontrado() {
         when(setorRepository.findById(10L)).thenReturn(Optional.of(setor));
-        when(materialRepository.findByCodigoSku("ZZZ-ZZZ-99999")).thenReturn(Optional.empty());
+        when(materialRepository.findByCodigoSkuIn(List.of("ZZZ-ZZZ-99999"))).thenReturn(List.of());
 
         SaidaRequestDTO req = new SaidaRequestDTO(10L, "joao",
                 List.of(new ItemSaidaDTO("ZZZ-ZZZ-99999", 1)));
@@ -149,7 +149,7 @@ class SaidaApiControllerTest {
     @Test
     void registrarSaida_propagaRegraDeNegocioDoService() {
         when(setorRepository.findById(10L)).thenReturn(Optional.of(setor));
-        when(materialRepository.findByCodigoSku("PAP-ESC-00001")).thenReturn(Optional.of(caneta));
+        when(materialRepository.findByCodigoSkuIn(List.of("PAP-ESC-00001"))).thenReturn(List.of(caneta));
         when(movimentacaoService.registrarSaida(any(), any(), any(), anyList()))
                 .thenThrow(new RegraDeNegocioException("Estoque insuficiente para \"Caneta Azul\""));
 
@@ -164,7 +164,7 @@ class SaidaApiControllerTest {
     @Test
     void registrarSaida_replayComMesmaChave_naoReexecutaService() {
         when(setorRepository.findById(10L)).thenReturn(Optional.of(setor));
-        when(materialRepository.findByCodigoSku("PAP-ESC-00001")).thenReturn(Optional.of(caneta));
+        when(materialRepository.findByCodigoSkuIn(List.of("PAP-ESC-00001"))).thenReturn(List.of(caneta));
         when(movimentacaoService.registrarSaida(any(), any(), any(), anyList()))
                 .thenReturn(Movimentacao.builder()
                         .id(777L)
@@ -188,7 +188,7 @@ class SaidaApiControllerTest {
     @Test
     void registrarSaida_semChave_executaSempre() {
         when(setorRepository.findById(10L)).thenReturn(Optional.of(setor));
-        when(materialRepository.findByCodigoSku("PAP-ESC-00001")).thenReturn(Optional.of(caneta));
+        when(materialRepository.findByCodigoSkuIn(List.of("PAP-ESC-00001"))).thenReturn(List.of(caneta));
         when(movimentacaoService.registrarSaida(any(), any(), any(), anyList()))
                 .thenReturn(movimentacaoDummy());
 

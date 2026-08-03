@@ -66,7 +66,8 @@
                         <h6 class="text-muted text-uppercase small mb-0" style="letter-spacing:.05em;">
                             Itens solicitados
                         </h6>
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="btn-adicionar-item">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btn-adicionar-item"
+                                data-repeater-add="#tabela-itens tbody">
                             <i class="bi bi-plus-lg"></i> Adicionar item
                         </button>
                     </div>
@@ -81,8 +82,8 @@
                                 <th style="width:10%"></th>
                             </tr>
                             </thead>
-                            <tbody>
-                            <tr class="linha-item">
+                            <tbody data-repeater>
+                            <tr class="linha-item" data-repeater-item>
                                 <td>
                                     <select name="itemMaterialId" class="form-select" required>
                                         <option value="">— Selecione —</option>
@@ -95,7 +96,8 @@
                                 <td><input type="number" name="itemValorUnitario" step="0.01" min="0"
                                            class="form-control" value="0"></td>
                                 <td>
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-remover">
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-remover"
+                                            data-repeater-remove>
                                         <i class="bi bi-x-lg"></i>
                                     </button>
                                 </td>
@@ -142,22 +144,9 @@
         }
         tipoSelect.addEventListener('change', aplicarRegrasDoTipo);
         aplicarRegrasDoTipo();
-
-        const tbody = document.querySelector('#tabela-itens tbody');
-        document.getElementById('btn-adicionar-item').addEventListener('click', () => {
-            const novaLinha = tbody.querySelector('.linha-item').cloneNode(true);
-            novaLinha.querySelectorAll('input').forEach(i => i.value = i.name === 'itemValorUnitario' ? '0' : '');
-            novaLinha.querySelector('select').value = '';
-            tbody.appendChild(novaLinha);
-        });
-        tbody.addEventListener('click', (ev) => {
-            if (ev.target.closest('.btn-remover')) {
-                const linhas = tbody.querySelectorAll('.linha-item');
-                if (linhas.length > 1) ev.target.closest('tr').remove();
-            }
-        });
     })();
 </script>
+<script th:src="@{/js/repeater.js}" defer></script>
 <th:block th:replace="~{fragments/layout :: scripts}"></th:block>
 </body>
 </html>

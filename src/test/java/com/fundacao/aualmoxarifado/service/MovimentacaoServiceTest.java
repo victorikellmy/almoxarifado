@@ -64,7 +64,7 @@ class MovimentacaoServiceTest {
 
     @Test
     void registrarSaida_comSaldoSuficiente_criaMovimentacaoPendente() {
-        when(materialRepository.findById(1L)).thenReturn(Optional.of(caneta));
+        when(materialRepository.findAllById(List.of(1L))).thenReturn(List.of(caneta));
 
         Movimentacao mov = service.registrarSaida(
                 setor, "joao.silva", null,
@@ -87,7 +87,7 @@ class MovimentacaoServiceTest {
     @Test
     void registrarSaida_comEstoqueInsuficiente_lancaRegraDeNegocio_eNaoAudita() {
         caneta.setEstoqueAtual(3);
-        when(materialRepository.findById(1L)).thenReturn(Optional.of(caneta));
+        when(materialRepository.findAllById(List.of(1L))).thenReturn(List.of(caneta));
 
         assertThatThrownBy(() -> service.registrarSaida(
                 setor, "joao.silva", null,
@@ -122,7 +122,7 @@ class MovimentacaoServiceTest {
 
     @Test
     void registrarSaida_comQuantidadeZeroOuNegativa_rejeita() {
-        when(materialRepository.findById(1L)).thenReturn(Optional.of(caneta));
+        when(materialRepository.findAllById(List.of(1L))).thenReturn(List.of(caneta));
 
         assertThatThrownBy(() -> service.registrarSaida(
                 setor, "joao.silva", null,
@@ -131,12 +131,50 @@ class MovimentacaoServiceTest {
                 .hasMessageContaining("maior que zero");
     }
 
+    // ============= registrarEntrada =============
+
+    @Test
+    void registrarEntrada_creditaEstoque_carregandoMateriaisEmLote() {
+        Material papel = Material.builder().id(2L).nome("Papel A4").estoqueAtual(10).build();
+        when(materialRepository.findAllById(List.of(1L, 2L)))
+                .thenReturn(List.of(caneta, papel));
+
+        Movimentacao mov = service.registrarEntrada(
+                "Fornecedor X", "NF-123", null,
+                List.of(new LinhaItem(1L, 5), new LinhaItem(2L, 20)));
+
+        assertThat(mov.getTipo()).isEqualTo(TipoMovimentacao.ENTRADA);
+        assertThat(mov.getStatus()).isEqualTo(StatusMovimentacao.ENTREGUE);
+        assertThat(caneta.getEstoqueAtual()).isEqualTo(55);
+        assertThat(papel.getEstoqueAtual()).isEqualTo(30);
+
+        // Todos os materiais vêm numa única query IN — nunca findById por item.
+        verify(materialRepository, times(1)).findAllById(any());
+        verify(materialRepository, never()).findById(any());
+        // Crédito persiste via dirty checking, sem save() por item.
+        verify(materialRepository, never()).save(any());
+        verify(auditoriaService).registrarEntrada(mov);
+    }
+
+    @Test
+    void registrarSaida_materialInexistenteNoLote_lancaRecursoNaoEncontrado() {
+        when(materialRepository.findAllById(List.of(1L, 77L))).thenReturn(List.of(caneta));
+
+        assertThatThrownBy(() -> service.registrarSaida(
+                setor, "joao.silva", null,
+                List.of(new LinhaItem(1L, 1), new LinhaItem(77L, 1))))
+                .isInstanceOf(com.fundacao.aualmoxarifado.exception.RecursoNaoEncontradoException.class)
+                .hasMessageContaining("77");
+
+        verify(movimentacaoRepository, never()).save(any());
+    }
+
     // ============= alterarStatus =============
 
     @Test
     void alterarStatus_pendenteParaAprovado_debitaEstoque_eAudita() {
         Movimentacao saida = saidaPendenteCom(caneta, 5);
-        when(movimentacaoRepository.findById(99L)).thenReturn(Optional.of(saida));
+        when(movimentacaoRepository.findByIdComItens(99L)).thenReturn(Optional.of(saida));
 
         Movimentacao resultado = service.alterarStatus(99L, StatusMovimentacao.APROVADO);
 
@@ -144,14 +182,15 @@ class MovimentacaoServiceTest {
         assertThat(caneta.getEstoqueAtual())
                 .as("transição PENDENTE → APROVADO debita o estoque (RN04)")
                 .isEqualTo(45);
-        verify(materialRepository).save(caneta);
+        // O débito persiste via dirty checking (entidade gerenciada) — sem save() explícito.
+        verify(materialRepository, never()).save(any());
         verify(auditoriaService).alterarStatus(resultado);
     }
 
     @Test
     void alterarStatus_idempotente_naoDebitaDuasVezes() {
         Movimentacao saida = saidaPendenteCom(caneta, 5);
-        when(movimentacaoRepository.findById(99L)).thenReturn(Optional.of(saida));
+        when(movimentacaoRepository.findByIdComItens(99L)).thenReturn(Optional.of(saida));
 
         // Primeira transição: PENDENTE → APROVADO. Debita.
         service.alterarStatus(99L, StatusMovimentacao.APROVADO);
@@ -169,14 +208,15 @@ class MovimentacaoServiceTest {
                 .as("APROVADO → ENTREGUE não debita (estoque já foi)")
                 .isEqualTo(45);
 
-        verify(materialRepository, times(1)).save(caneta);
+        // Débito acontece via dirty checking, uma única vez (estoque 50 → 45).
+        verify(materialRepository, never()).save(any());
     }
 
     @Test
     void alterarStatus_quandoEstoqueSumiuEntreRegistroEAprovacao_falha() {
         Movimentacao saida = saidaPendenteCom(caneta, 5);
         caneta.setEstoqueAtual(2); // outra operação consumiu o estoque depois
-        when(movimentacaoRepository.findById(99L)).thenReturn(Optional.of(saida));
+        when(movimentacaoRepository.findByIdComItens(99L)).thenReturn(Optional.of(saida));
 
         assertThatThrownBy(() ->
                 service.alterarStatus(99L, StatusMovimentacao.APROVADO))

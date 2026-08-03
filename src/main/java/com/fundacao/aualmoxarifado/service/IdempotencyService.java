@@ -40,7 +40,6 @@ public class IdempotencyService {
     private final Cache<String, Object> cache = Caffeine.newBuilder()
             .expireAfterWrite(Duration.ofMinutes(10))
             .maximumSize(10_000)
-            .recordStats()
             .build();
 
     @SuppressWarnings("unchecked")
@@ -49,15 +48,18 @@ public class IdempotencyService {
             return operacao.get();
         }
 
-        Object existente = cache.getIfPresent(chave);
-        if (existente != null) {
-            log.info("Idempotency-Key replay: chave='{}' — devolvendo resposta em cache", chave);
-            return (T) existente;
-        }
-
-        return (T) cache.get(chave, k -> {
+        // Uma única consulta atômica ao cache: o getIfPresent prévio duplicava
+        // a busca e deixava uma janela entre as duas chamadas onde um hit era
+        // logado como "novo".
+        boolean[] executou = {false};
+        T valor = (T) cache.get(chave, k -> {
+            executou[0] = true;
             log.debug("Idempotency-Key novo: chave='{}' — executando operação", k);
             return operacao.get();
         });
+        if (!executou[0]) {
+            log.info("Idempotency-Key replay: chave='{}' — devolvendo resposta em cache", chave);
+        }
+        return valor;
     }
 }

@@ -20,6 +20,9 @@ public class PdfExporter implements Exporter {
 
     private static final DateTimeFormatter FMT_DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
+    /** Linhas acumuladas antes de cada flush incremental da tabela. */
+    private static final int LOTE_FLUSH = 1000;
+
     @Override public String contentType()    { return "application/pdf"; }
     @Override public String fileExtension()  { return "pdf"; }
 
@@ -45,6 +48,8 @@ public class PdfExporter implements Exporter {
 
             PdfPTable table = new PdfPTable(cabecalhos.size());
             table.setWidthPercentage(100);
+            // Header repetido a cada página e necessário para o flush incremental.
+            table.setHeaderRows(1);
 
             Font headerFont = new Font(Font.HELVETICA, 10, Font.BOLD, Color.WHITE);
             for (String h : cabecalhos) {
@@ -57,6 +62,7 @@ public class PdfExporter implements Exporter {
 
             Font cellFont = new Font(Font.HELVETICA, 9, Font.NORMAL);
             boolean alt = false;
+            int pendentes = 0;
             for (List<String> linha : linhas) {
                 for (String v : linha) {
                     PdfPCell cell = new PdfPCell(new Phrase(v != null ? v : "", cellFont));
@@ -65,6 +71,14 @@ public class PdfExporter implements Exporter {
                     table.addCell(cell);
                 }
                 alt = !alt;
+                // Flush incremental: serializa e descarta as linhas já escritas
+                // a cada lote, em vez de montar a tabela inteira no heap.
+                if (++pendentes == LOTE_FLUSH) {
+                    doc.add(table);
+                    table.deleteBodyRows();
+                    table.setSkipFirstHeader(true);
+                    pendentes = 0;
+                }
             }
             doc.add(table);
         } finally {

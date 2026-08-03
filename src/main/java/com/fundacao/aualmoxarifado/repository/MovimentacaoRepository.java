@@ -1,11 +1,16 @@
 package com.fundacao.aualmoxarifado.repository;
 
 import com.fundacao.aualmoxarifado.domain.Movimentacao;
+import com.fundacao.aualmoxarifado.domain.StatusMovimentacao;
 import com.fundacao.aualmoxarifado.dto.ConsumoMaterialDTO;
 import com.fundacao.aualmoxarifado.dto.ConsumoSetorDTO;
 import com.fundacao.aualmoxarifado.dto.GastoSetorDTO;
 import com.fundacao.aualmoxarifado.dto.LinhaMesTipoDTO;
 import com.fundacao.aualmoxarifado.dto.ResumoTipoDTO;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -13,9 +18,36 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long>,
                                                  JpaSpecificationExecutor<Movimentacao> {
+
+    /** Contagem por status via COUNT(*) no banco — usada pelo dashboard. */
+    long countByStatus(StatusMovimentacao status);
+
+    /**
+     * Listagem paginada com setorDestino já carregado (evita 1 SELECT por linha).
+     * A coleção {@code itens} fica de fora de propósito: fetch join de coleção
+     * com paginação forçaria o Hibernate a paginar em memória; ela é resolvida
+     * pelo {@code default_batch_fetch_size}.
+     */
+    @Override
+    @EntityGraph(attributePaths = {"setorDestino"})
+    Page<Movimentacao> findAll(Specification<Movimentacao> spec, Pageable pageable);
+
+    /**
+     * Carrega a movimentação com itens e materiais numa única query — usado
+     * pela aprovação (RN04) e telas de detalhe, que percorrem os itens.
+     */
+    @Query("""
+           SELECT DISTINCT m FROM Movimentacao m
+           LEFT JOIN FETCH m.itens i
+           LEFT JOIN FETCH i.material
+           LEFT JOIN FETCH m.setorDestino
+           WHERE m.id = :id
+           """)
+    Optional<Movimentacao> findByIdComItens(@Param("id") Long id);
 
     /**
      * RF10 - Relatório de Consumo por Setor.
@@ -95,7 +127,8 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
            ORDER BY SUM(i.quantidade) DESC
            """)
     List<ConsumoMaterialDTO> topMateriais(@Param("inicio") LocalDateTime inicio,
-                                          @Param("fim") LocalDateTime fim);
+                                          @Param("fim") LocalDateTime fim,
+                                          Pageable pageable);
 
     /**
      * Custo por setor no período — soma valor de saídas APROVADO/ENTREGUE
@@ -142,7 +175,8 @@ public interface MovimentacaoRepository extends JpaRepository<Movimentacao, Long
            WHERE m.data BETWEEN :inicio AND :fim
              AND m.status NOT IN (com.fundacao.aualmoxarifado.domain.StatusMovimentacao.PENDENTE_APROVACAO,
                                   com.fundacao.aualmoxarifado.domain.StatusMovimentacao.REJEITADO)
-           GROUP BY EXTRACT(YEAR FROM m.data), EXTRACT(MONTH FROM m.data), m.tipo
+           GROUP BY CAST(EXTRACT(YEAR FROM m.data) AS integer),
+                    CAST(EXTRACT(MONTH FROM m.data) AS integer), m.tipo
            ORDER BY 1, 2, 3
            """)
     List<LinhaMesTipoDTO> agregadoPorMesTipo(@Param("inicio") LocalDateTime inicio,

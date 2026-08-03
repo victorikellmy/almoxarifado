@@ -1,13 +1,16 @@
 package com.fundacao.aualmoxarifado.service;
 
+import com.fundacao.aualmoxarifado.config.CacheConfig;
 import com.fundacao.aualmoxarifado.domain.*;
 import com.fundacao.aualmoxarifado.dto.ConsumoSetorDTO;
+import com.fundacao.aualmoxarifado.dto.MovimentacaoResumoDTO;
 import com.fundacao.aualmoxarifado.exception.RecursoNaoEncontradoException;
 import com.fundacao.aualmoxarifado.exception.RegraDeNegocioException;
 import com.fundacao.aualmoxarifado.repository.MaterialRepository;
 import com.fundacao.aualmoxarifado.repository.MovimentacaoRepository;
 import com.fundacao.aualmoxarifado.repository.spec.MovimentacaoSpecifications;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -16,6 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Serviço de movimentações de estoque — modelagem <b>cabeçalho + itens</b>.
@@ -26,6 +33,7 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class MovimentacaoService {
 
     private final MovimentacaoRepository movimentacaoRepository;
@@ -61,6 +69,24 @@ public class MovimentacaoService {
                 pageable);
     }
 
+    /**
+     * Variante da listagem que já devolve DTOs — compartilhada por
+     * {@code MovimentacaoApiController} e {@code SaidaApiController} (antes
+     * duplicavam o mesmo endpoint). O mapeamento roda DENTRO da transação
+     * read-only: os acessos a itens/materiais do DTO saem em lotes IN
+     * (default_batch_fetch_size) em vez de depender do open-in-view.
+     */
+    public Page<MovimentacaoResumoDTO> listarResumo(TipoMovimentacao tipo,
+                                                    StatusMovimentacao status,
+                                                    Long materialId,
+                                                    Long setorId,
+                                                    LocalDateTime inicio,
+                                                    LocalDateTime fim,
+                                                    Pageable pageable) {
+        return listar(tipo, status, materialId, setorId, inicio, fim, pageable)
+                .map(MovimentacaoResumoDTO::from);
+    }
+
     // =========================================================================
     // SAÍDA (RF06)
     // =========================================================================
@@ -72,6 +98,8 @@ public class MovimentacaoService {
      * o estoque NÃO é debitado nesse momento (somente após aprovação).</p>
      */
     @Transactional
+    @CacheEvict(cacheNames = {CacheConfig.CACHE_REL_MENSAL, CacheConfig.CACHE_REL_TRIMESTRAL,
+            CacheConfig.CACHE_REL_ANUAL}, allEntries = true)
     public Movimentacao registrarSaida(Setor setor,
                                        String retiradoPor,
                                        String observacao,
@@ -82,8 +110,9 @@ public class MovimentacaoService {
         Movimentacao mov = novaCabeca(TipoMovimentacao.SAIDA, setor, retiradoPor,
                                       null, null, observacao, StatusMovimentacao.PENDENTE_APROVACAO);
 
+        Map<Long, Material> materiais = carregarMateriais(linhas);
         for (LinhaItem ln : linhas) {
-            Material material = carregarMaterial(ln.materialId());
+            Material material = materialDe(materiais, ln.materialId());
             validarQuantidade(ln.quantidade());
             // Validação: estoque suficiente AGORA (não debita ainda, mas evita pedidos absurdos)
             if (material.getEstoqueAtual() < ln.quantidade()) {
@@ -112,6 +141,8 @@ public class MovimentacaoService {
      * O estoque dos materiais é creditado na mesma transação.
      */
     @Transactional
+    @CacheEvict(cacheNames = {CacheConfig.CACHE_REL_MENSAL, CacheConfig.CACHE_REL_TRIMESTRAL,
+            CacheConfig.CACHE_REL_ANUAL}, allEntries = true)
     public Movimentacao registrarEntrada(String fornecedor,
                                          String notaFiscal,
                                          String observacao,
@@ -122,12 +153,14 @@ public class MovimentacaoService {
                                       fornecedor, notaFiscal, observacao,
                                       StatusMovimentacao.ENTREGUE);
 
+        Map<Long, Material> materiais = carregarMateriais(linhas);
         for (LinhaItem ln : linhas) {
-            Material material = carregarMaterial(ln.materialId());
+            Material material = materialDe(materiais, ln.materialId());
             validarQuantidade(ln.quantidade());
 
+            // Entidade gerenciada: o dirty checking persiste a alteração no commit,
+            // sem save() (que forçaria flushes intermediários) por item.
             material.setEstoqueAtual(material.getEstoqueAtual() + ln.quantidade());
-            materialRepository.save(material);
 
             mov.adicionarItem(MovimentacaoItem.builder()
                     .material(material)
@@ -149,6 +182,8 @@ public class MovimentacaoService {
      * Não incrementa nem decrementa o estoque geral.
      */
     @Transactional
+    @CacheEvict(cacheNames = {CacheConfig.CACHE_REL_MENSAL, CacheConfig.CACHE_REL_TRIMESTRAL,
+            CacheConfig.CACHE_REL_ANUAL}, allEntries = true)
     public Movimentacao registrarCompraDireta(Setor setor,
                                               String retiradoPor,
                                               String fornecedor,
@@ -162,8 +197,9 @@ public class MovimentacaoService {
                                       fornecedor, notaFiscal, observacao,
                                       StatusMovimentacao.ENTREGUE);
 
+        Map<Long, Material> materiais = carregarMateriais(linhas);
         for (LinhaItem ln : linhas) {
-            Material material = carregarMaterial(ln.materialId());
+            Material material = materialDe(materiais, ln.materialId());
             validarQuantidade(ln.quantidade());
             mov.adicionarItem(MovimentacaoItem.builder()
                     .material(material)
@@ -185,8 +221,12 @@ public class MovimentacaoService {
      * de cada item é decrementado. Idempotente: só debita na primeira transição.
      */
     @Transactional
+    @CacheEvict(cacheNames = {CacheConfig.CACHE_REL_MENSAL, CacheConfig.CACHE_REL_TRIMESTRAL,
+            CacheConfig.CACHE_REL_ANUAL}, allEntries = true)
     public Movimentacao alterarStatus(Long movimentacaoId, StatusMovimentacao novoStatus) {
-        Movimentacao mov = buscar(movimentacaoId);
+        // Fetch join de itens + materiais: 1 query em vez de 1 + N proxies lazy.
+        Movimentacao mov = movimentacaoRepository.findByIdComItens(movimentacaoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Movimentacao", movimentacaoId));
 
         StatusMovimentacao atual = mov.getStatus();
         if (atual == novoStatus) return mov;
@@ -204,8 +244,8 @@ public class MovimentacaoService {
                                     + material.getNome() + "\". Disponível: "
                                     + material.getEstoqueAtual());
                 }
+                // Entidade gerenciada: dirty checking persiste no commit.
                 material.setEstoqueAtual(material.getEstoqueAtual() - item.getQuantidade());
-                materialRepository.save(material);
             }
         }
 
@@ -242,12 +282,29 @@ public class MovimentacaoService {
                 .build();
     }
 
-    private Material carregarMaterial(Long materialId) {
+    /**
+     * Pré-carrega todos os materiais das linhas numa única query (IN),
+     * em vez de um findById por item — O(1) round-trips no lugar de O(N).
+     */
+    private Map<Long, Material> carregarMateriais(List<LinhaItem> linhas) {
+        List<Long> ids = linhas.stream()
+                .map(LinhaItem::materialId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        return materialRepository.findAllById(ids).stream()
+                .collect(Collectors.toMap(Material::getId, Function.identity()));
+    }
+
+    private static Material materialDe(Map<Long, Material> materiais, Long materialId) {
         if (materialId == null) {
             throw new IllegalArgumentException("Material é obrigatório em todos os itens.");
         }
-        return materialRepository.findById(materialId)
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Material", materialId));
+        Material material = materiais.get(materialId);
+        if (material == null) {
+            throw new RecursoNaoEncontradoException("Material", materialId);
+        }
+        return material;
     }
 
     private static void validarQuantidade(Integer qtd) {

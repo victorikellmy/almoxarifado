@@ -19,8 +19,8 @@
     <title th:text="${titulo} + ' · Almoxarifado'">Almoxarifado</title>
 
     <!-- Favicon institucional -->
-    <link rel="icon" type="image/png" th:href="@{/images/logo-color-vert.png}"/>
-    <link rel="apple-touch-icon" th:href="@{/images/logo-color-vert.png}"/>
+    <link rel="icon" type="image/png" th:href="@{/images/favicon-48.png}"/>
+    <link rel="apple-touch-icon" th:href="@{/images/apple-touch-icon.png}"/>
 
     <!-- Google Fonts: Inter + JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -56,250 +56,16 @@
         })();
     </script>
 
-    <!-- Compat layer: preserva o shell .app-shell / .app-main / .app-content
-         usado pelas páginas existentes, sobre o CSS do Patrimônio.
-         Também garante que a topbar comporte título + subtítulo. -->
-    <style>
-        .app-shell { min-height: 100vh; }
-        .app-main { display: flex; flex-direction: column; min-width: 0; }
-        .app-content { padding: 1.75rem 2rem 2.5rem; }
-        @media (max-width: 991px) { .app-content { padding: 1rem; } }
-
-        /* Override do app.css que empurrava o <main> 20px para baixo,
-           desalinhando a topbar do brand fixo da sidebar. */
-        body:has(.app-sidebar) main.app-main { padding-top: 0; }
-
-        /* ============ Stat cards (indicadores) ============ */
-        .stat-card {
-            display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-            padding: 1.25rem;
-            border-radius: 12px;
-            background: var(--bg-surface);
-            border: 1px solid var(--border);
-            transition: box-shadow var(--transition), transform var(--transition), border-color var(--transition);
-            min-height: 100%;
-        }
-        a > .stat-card,
-        .hover-shadow:hover {
-            box-shadow: var(--shadow-2);
-            border-color: var(--border-hover, var(--primary-300));
-        }
-        a > .stat-card:hover { transform: translateY(-1px); }
-
-        .stat-card > div:last-child {
-            min-width: 0;
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: .25rem;
-        }
-
-        .stat-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.15rem;
-            flex-shrink: 0;
-        }
-        .stat-icon.bg-brand        { background: var(--primary-50);  color: var(--primary-700); }
-        .stat-icon.bg-warning-soft { background: var(--warning-bg);  color: var(--warning-fg); }
-        .stat-icon.bg-info-soft    { background: var(--info-bg);     color: var(--info-fg); }
-        .stat-icon.bg-success-soft { background: var(--success-bg);  color: var(--success-fg); }
-        [data-theme="dark"] .stat-icon.bg-brand {
-            background: rgba(39, 118, 173, 0.18);
-            color: var(--primary-300);
-        }
-
-        .stat-label {
-            margin: 0;
-            font-size: .78rem;
-            font-weight: 500;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: .03em;
-            line-height: 1.2;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .stat-value {
-            margin: 0;
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            line-height: 1.1;
-            letter-spacing: -.02em;
-            font-variant-numeric: tabular-nums;
-        }
-        .stat-hint {
-            margin: 0;
-            font-size: .78rem;
-            color: var(--text-muted);
-            line-height: 1.3;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .stat-hint a { color: var(--primary-600); font-weight: 500; }
-
-        /* Card padding helper usado pelas seções */
-        .card-pad { padding: 1.25rem 1.5rem; }
-        .hover-shadow { transition: box-shadow var(--transition), transform var(--transition); }
-        .hover-shadow:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); }
-        .min-w-0 { min-width: 0; }
-
-        /* Topbar com título + subtítulo — altura travada na mesma do brand
-           da sidebar (var(--topbar-h)) para alinhar visualmente com o logo. */
-        .app-topbar {
-            height: var(--topbar-h);
-            min-height: var(--topbar-h);
-            max-height: var(--topbar-h);
-            padding: 0 1.5rem;
-        }
-        .app-topbar .topbar-page-title {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            line-height: 1.15;
-            min-width: 0;
-        }
-        .app-topbar .topbar-page-title h1 {
-            font-size: 1rem;
-            margin: 0;
-            font-weight: 600;
-            letter-spacing: -.01em;
-            color: var(--text-primary);
-        }
-        .app-topbar .topbar-page-title p {
-            margin: 2px 0 0;
-            font-size: .75rem;
-            color: var(--text-muted);
-            line-height: 1.1;
-        }
-
-        /* ============ Legibilidade no modo escuro ============
-           O esquema padrão do app.css usa um text-muted muito apagado em tons
-           médios. No tema escuro, isso reduz drasticamente o contraste com o
-           fundo (#0f172a ~ #050a14). Os overrides abaixo elevam a luminância
-           dos textos secundários e dos códigos/dashes sem mexer no tema claro. */
-        [data-theme="dark"] {
-            --text-muted: #94a3b8;          /* slate-400  (≈ AAA em fundos #0f172a) */
-        }
-        [data-theme="dark"] .text-muted,
-        [data-theme="dark"] .text-muted.small,
-        [data-theme="dark"] small.text-muted,
-        [data-theme="dark"] .form-text {
-            color: #94a3b8 !important;
-        }
-        [data-theme="dark"] .table {
-            color: #e2e8f0;                  /* slate-200 — texto base */
-        }
-        [data-theme="dark"] .table thead th {
-            color: #cbd5e1;                  /* slate-300 */
-            background: #1e293b;
-            border-bottom-color: #334155;
-        }
-        [data-theme="dark"] .table tbody td.text-muted {
-            color: #cbd5e1 !important;       /* mais legível que slate-400 */
-        }
-        [data-theme="dark"] code {
-            color: #93c5fd;                  /* azul-claro nice */
-            background: rgba(148,163,184,.10);
-            padding: 2px 6px;
-            border-radius: 4px;
-        }
-        [data-theme="dark"] .table tbody tr:hover {
-            background: rgba(148,163,184,.07);
-        }
-        /* Em-dash placeholders ("—") usados onde não há valor — uma cor própria
-           torna claro que é "vazio" sem desaparecer. */
-        [data-theme="dark"] .placeholder-dash {
-            color: #64748b !important;       /* slate-500 */
-        }
-        /* Status pills (.status-pill) — garante contraste em ambos os temas. */
-        .status-pill {
-            display: inline-block;
-            padding: 2px 10px;
-            border-radius: 999px;
-            font-size: .72rem;
-            font-weight: 600;
-            letter-spacing: .03em;
-        }
-        [data-theme="dark"] .status-pill {
-            filter: brightness(1.05) saturate(1.1);
-        }
-        /* Badges informativos — no escuro, eleva levemente o contraste. */
-        [data-theme="dark"] .badge.bg-secondary {
-            background: #475569 !important;
-            color: #e2e8f0;
-        }
-        [data-theme="dark"] .empty-state {
-            color: #94a3b8;
-        }
-        [data-theme="dark"] .form-control,
-        [data-theme="dark"] .form-select {
-            color: #e2e8f0;
-        }
-        /* Headers/títulos de seções */
-        [data-theme="dark"] h1, [data-theme="dark"] h2, [data-theme="dark"] h3,
-        [data-theme="dark"] h4, [data-theme="dark"] h5, [data-theme="dark"] h6 {
-            color: #f1f5f9;                  /* slate-100 */
-        }
-        /* Garantia: valores dentro de .card sempre legíveis no escuro,
-           mesmo se Bootstrap reverter a cor de texto via --bs-body-color. */
-        [data-theme="dark"] .card,
-        [data-theme="dark"] .card-pad,
-        [data-theme="dark"] .card-body {
-            color: #e2e8f0;                  /* slate-200 */
-        }
-        [data-theme="dark"] .card .fw-bold,
-        [data-theme="dark"] .card .fw-semibold,
-        [data-theme="dark"] .card .fs-4 {
-            color: #f8fafc;                  /* slate-50 — destaca valores */
-        }
-        /* Status pills em dark mode: backgrounds suaves com texto bem mais
-           claro para WCAG-friendly contrast. Override do inline-style das
-           páginas via !important — propositalmente escopado a [data-theme="dark"]. */
-        [data-theme="dark"] .status-pill {
-            filter: none;
-            border: 1px solid transparent;
-        }
-        [data-theme="dark"] .status-pill.text-warning {
-            background: rgba(245, 158, 11, 0.18) !important;
-            color: #fcd34d !important;
-            border-color: rgba(245, 158, 11, 0.35);
-        }
-        [data-theme="dark"] .status-pill.text-info {
-            background: rgba(14, 165, 233, 0.18) !important;
-            color: #7dd3fc !important;
-            border-color: rgba(14, 165, 233, 0.35);
-        }
-        [data-theme="dark"] .status-pill.text-success {
-            background: rgba(16, 185, 129, 0.18) !important;
-            color: #6ee7b7 !important;
-            border-color: rgba(16, 185, 129, 0.35);
-        }
-        [data-theme="dark"] .status-pill.text-danger {
-            background: rgba(239, 68, 68, 0.18) !important;
-            color: #fca5a5 !important;
-            border-color: rgba(239, 68, 68, 0.35);
-        }
-    </style>
 </head>
 
 <!-- ============================ SIDEBAR ============================ -->
 <aside th:fragment="sidebar(ativo)" class="app-sidebar" id="appSidebar" aria-label="Navegação principal">
     <div class="sidebar-brand">
         <a class="sidebar-brand-link" th:href="@{/}">
-            <img th:src="@{/images/logo-color.png}" alt="Fundação Pró-Tocantins"
-                 class="sidebar-brand-logo sidebar-brand-logo-light"/>
-            <img th:src="@{/images/logo-white.png}" alt="Fundação Pró-Tocantins"
-                 class="sidebar-brand-logo sidebar-brand-logo-dark"/>
+            <img th:src="@{/images/logo-color-sm.png}" alt="Fundação Pró-Tocantins"
+                 class="sidebar-brand-logo sidebar-brand-logo-light" loading="lazy"/>
+            <img th:src="@{/images/logo-white-sm.png}" alt="Fundação Pró-Tocantins"
+                 class="sidebar-brand-logo sidebar-brand-logo-dark" loading="lazy"/>
             <span class="sidebar-brand-mark-collapsed" aria-hidden="true">
                 <i class="bi bi-box-seam"></i>
             </span>
@@ -405,9 +171,6 @@
     </div>
 </aside>
 
-<!-- Backdrop para mobile drawer (renderizado junto da sidebar) -->
-<div th:fragment="sidebarBackdrop" class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
-
 <!-- ============================ TOPBAR ============================ -->
 <header th:fragment="topbar(titulo, subtitulo)" class="app-topbar">
     <button type="button" class="topbar-icon-btn d-lg-none" id="sidebarOpenBtn"
@@ -472,85 +235,8 @@
     <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-            crossorigin="anonymous"></script>
-
-    <script>
-        // ---------- Theme toggle ----------
-        (function () {
-            const btn = document.getElementById('themeToggleBtn');
-            if (!btn) return;
-            const iconDark = document.getElementById('themeIconDark');
-            const iconLight = document.getElementById('themeIconLight');
-            const sync = () => {
-                const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-                iconDark.style.display = dark ? 'none' : '';
-                iconLight.style.display = dark ? '' : 'none';
-            };
-            sync();
-            btn.addEventListener('click', () => {
-                const current = document.documentElement.getAttribute('data-theme');
-                const next = current === 'dark' ? 'light' : 'dark';
-                document.documentElement.setAttribute('data-theme', next);
-                document.documentElement.setAttribute('data-bs-theme', next);
-                localStorage.setItem('alm-theme', next);
-                sync();
-            });
-        })();
-
-        // ---------- Sidebar: collapse desktop + drawer mobile ----------
-        (function () {
-            const root = document.documentElement;
-            const sidebar = document.getElementById('appSidebar');
-            const backdrop = document.getElementById('sidebarBackdrop');
-            const openBtn = document.getElementById('sidebarOpenBtn');
-            const toggleBtn = document.getElementById('sidebarToggleBtn');
-            const collapseBtn = document.getElementById('sidebarCollapseBtn');
-
-            const toggleCollapsed = () => {
-                root.classList.toggle('sidebar-collapsed');
-                localStorage.setItem('alm-sidebar',
-                    root.classList.contains('sidebar-collapsed') ? 'collapsed' : 'expanded');
-            };
-
-            const openMobile = () => {
-                sidebar?.classList.add('is-open');
-                backdrop?.classList.add('is-visible');
-                document.body.style.overflow = 'hidden';
-            };
-            const closeMobile = () => {
-                sidebar?.classList.remove('is-open');
-                backdrop?.classList.remove('is-visible');
-                document.body.style.overflow = '';
-            };
-
-            openBtn?.addEventListener('click', openMobile);
-            backdrop?.addEventListener('click', closeMobile);
-            toggleBtn?.addEventListener('click', toggleCollapsed);
-            collapseBtn?.addEventListener('click', toggleCollapsed);
-
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && sidebar?.classList.contains('is-open')) closeMobile();
-            });
-            window.addEventListener('resize', () => {
-                if (window.innerWidth >= 992) closeMobile();
-            });
-        })();
-
-        // ---------- Toasts: auto-hide + fechar ----------
-        (function () {
-            document.querySelectorAll('.toast-modern').forEach((toast) => {
-                const delay = parseInt(toast.dataset.toastAutohide || '0', 10);
-                const close = () => {
-                    toast.style.opacity = '0';
-                    toast.style.transform = 'translateX(20px)';
-                    toast.style.transition = 'all 200ms ease-out';
-                    setTimeout(() => toast.remove(), 200);
-                };
-                toast.querySelector('.toast-close')?.addEventListener('click', close);
-                if (delay > 0) setTimeout(close, delay);
-            });
-        })();
-    </script>
+            crossorigin="anonymous" defer></script>
+    <script th:src="@{/js/app.js}" defer></script>
 </th:block>
 
 </html>

@@ -97,16 +97,16 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr th:each="s : ${subcategorias}">
+                        <tr th:each="s : ${subcategorias}" th:with="area=${s.area}">
                             <td class="text-muted" th:text="${s.id}"></td>
                             <td>
-                                <span class="badge bg-primary me-1" th:text="${s.area.sigla}"></span>
-                                <span class="text-muted small" th:text="${s.area.nome}"></span>
+                                <span class="badge bg-primary me-1" th:text="${area.sigla}"></span>
+                                <span class="text-muted small" th:text="${area.nome}"></span>
                             </td>
                             <td><span class="badge bg-info" th:text="${s.sigla}"></span></td>
                             <td class="fw-semibold" th:text="${s.nome}"></td>
                             <td class="text-end">
-                                <code th:text="${s.area.sigla + '-' + s.sigla + '-'
+                                <code th:text="${area.sigla + '-' + s.sigla + '-'
                                                 + #numbers.formatInteger(s.proximoSequencial != null ? s.proximoSequencial : 1, 5, 'NONE')}"></code>
                             </td>
                             <td class="text-end">

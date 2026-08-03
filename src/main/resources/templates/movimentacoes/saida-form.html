@@ -54,14 +54,16 @@
                         <h6 class="text-muted text-uppercase small mb-0" style="letter-spacing:.05em;">
                             Itens da saída
                         </h6>
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="btn-add-item">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btn-add-item"
+                                data-repeater-add="#itens-container">
                             <i class="bi bi-plus-lg"></i> Adicionar item
                         </button>
                     </div>
 
-                    <div id="itens-container">
+                    <div id="itens-container" data-repeater
+                         data-repeater-template="#item-template" data-repeater-last="clear">
                         <!-- Linha 0 (padrão, sempre existe) -->
-                        <div class="row g-2 align-items-end item-row mb-2">
+                        <div class="row g-2 align-items-end item-row mb-2" data-repeater-item>
                             <div class="col-md-8">
                                 <label class="form-label small mb-1">Material *</label>
                                 <select name="materialIds" class="form-select" required>
@@ -77,7 +79,7 @@
                             </div>
                             <div class="col-md-1 d-flex">
                                 <button type="button" class="btn btn-outline-danger w-100 btn-remove-item"
-                                        title="Remover item">
+                                        data-repeater-remove title="Remover item">
                                     <i class="bi bi-x-lg"></i>
                                 </button>
                             </div>
@@ -107,7 +109,7 @@
 
 <!-- Template hidden para nova linha de item (clonado pelo JS) -->
 <template id="item-template">
-    <div class="row g-2 align-items-end item-row mb-2">
+    <div class="row g-2 align-items-end item-row mb-2" data-repeater-item>
         <div class="col-md-8">
             <label class="form-label small mb-1">Material *</label>
             <select name="materialIds" class="form-select" required>
@@ -122,7 +124,8 @@
             <input type="number" min="1" name="quantidades" class="form-control" required>
         </div>
         <div class="col-md-1 d-flex">
-            <button type="button" class="btn btn-outline-danger w-100 btn-remove-item" title="Remover item">
+            <button type="button" class="btn btn-outline-danger w-100 btn-remove-item"
+                    data-repeater-remove title="Remover item">
                 <i class="bi bi-x-lg"></i>
             </button>
         </div>
@@ -130,34 +133,6 @@
 </template>
 
 <th:block th:replace="~{fragments/layout :: scripts}"></th:block>
-<script>
-    (function () {
-        const container = document.getElementById('itens-container');
-        const addBtn    = document.getElementById('btn-add-item');
-        const template  = document.getElementById('item-template');
-
-        function bindRemove(row) {
-            const btn = row.querySelector('.btn-remove-item');
-            if (!btn) return;
-            btn.addEventListener('click', () => {
-                if (container.querySelectorAll('.item-row').length > 1) {
-                    row.remove();
-                } else {
-                    // Última linha: limpa em vez de remover
-                    row.querySelectorAll('select, input').forEach(el => el.value = '');
-                }
-            });
-        }
-
-        // Bind no remove da linha inicial
-        container.querySelectorAll('.item-row').forEach(bindRemove);
-
-        addBtn.addEventListener('click', () => {
-            const clone = template.content.firstElementChild.cloneNode(true);
-            container.appendChild(clone);
-            bindRemove(clone);
-        });
-    })();
-</script>
+<script th:src="@{/js/repeater.js}" defer></script>
 </body>
 </html>

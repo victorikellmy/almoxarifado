@@ -28,7 +28,11 @@ import java.time.LocalDateTime;
  *      física do produto.
  */
 @Entity
-@Table(name = "material")
+@Table(name = "material", indexes = {
+        // nome é o sort default das listagens; subcategoria_id é o filtro mais comum.
+        @Index(name = "idx_material_nome",         columnList = "nome"),
+        @Index(name = "idx_material_subcategoria", columnList = "subcategoria_id")
+})
 @EntityListeners(AuditingEntityListener.class)
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Material {

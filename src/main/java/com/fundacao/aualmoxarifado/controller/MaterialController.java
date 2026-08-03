@@ -37,7 +37,8 @@ public class MaterialController {
         var page = materialService.listar(nome, sku, subcategoriaId, areaId, emAlerta, pageable);
 
         model.addAttribute("page", page);
-        model.addAttribute("alertas", materialService.alertasDeEstoque()); // RN06
+        // RN06 — a tela usa só o número; COUNT no banco em vez de materializar a lista.
+        model.addAttribute("qtdAlertas", materialService.contarAlertasDeEstoque());
         model.addAttribute("areas", areaRepository.findAllByOrderByNomeAsc());
         // Subcategorias só fazem sentido quando uma área está selecionada — evita
         // dropdown de centenas de itens. O JS do template recarrega via AJAX

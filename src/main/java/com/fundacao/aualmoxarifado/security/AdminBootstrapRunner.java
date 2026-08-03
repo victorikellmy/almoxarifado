@@ -34,8 +34,7 @@ public class AdminBootstrapRunner {
                                         @Value("${app.admin.senha:trocar@123}") String senha,
                                         @Value("${app.admin.nome:Administrador}") String nome) {
         return args -> {
-            boolean existeAlgumAdmin = repo.findAll().stream()
-                    .anyMatch(u -> u.getPerfil() == Perfil.ADMINISTRADOR && u.isAtivo());
+            boolean existeAlgumAdmin = repo.existsByPerfilAndAtivoTrue(Perfil.ADMINISTRADOR);
             if (existeAlgumAdmin) {
                 log.debug("Administrador já existe — seed ignorado.");
                 return;

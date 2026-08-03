@@ -13,6 +13,7 @@ import org.springframework.security.config.annotation.web.configurers.HeadersCon
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
@@ -31,7 +32,19 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        // Strength explícito: o default pode mudar entre versões do Spring Security
+        // e alterar silenciosamente a latência de autenticação.
+        return new BCryptPasswordEncoder(10);
+    }
+
+    /**
+     * Recursos estáticos fora da cadeia de filtros: permitAll() ainda executa
+     * ~15 filtros por CSS/JS/imagem; ignoring() pula a cadeia inteira.
+     */
+    @Bean
+    public WebSecurityCustomizer ignorarEstaticos() {
+        return web -> web.ignoring()
+                .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/favicon.ico");
     }
 
     // =========================================================================
@@ -43,6 +56,7 @@ public class SecurityConfig {
         http
                 .securityMatcher("/api/**")
                 .csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("ADMINISTRADOR")
@@ -65,11 +79,8 @@ public class SecurityConfig {
     public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
-                        // recursos estáticos e públicos
-                        .requestMatchers(
-                                "/login", "/css/**", "/js/**", "/images/**",
-                                "/webjars/**", "/favicon.ico"
-                        ).permitAll()
+                        // públicos (estáticos ficam fora da cadeia — ver ignorarEstaticos())
+                        .requestMatchers("/login").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
 
                         // ações administrativas

@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
-import java.util.stream.Collectors;
 
 /**
  * Grava entradas em {@link AuditoriaLog}.
@@ -80,13 +79,19 @@ public class AuditoriaService {
         if (mov.getItens() == null || mov.getItens().isEmpty()) {
             return "(sem itens)";
         }
-        String texto = mov.getItens().stream()
-                .map(this::formatarItem)
-                .collect(Collectors.joining(", "));
-        if (texto.length() > MAX_DETALHES) {
-            return texto.substring(0, MAX_DETALHES - 3) + "...";
+        // Acumula até o limite e para: a saída é limitada a MAX_DETALHES chars,
+        // então não há motivo para formatar milhares de itens que serão truncados.
+        StringBuilder sb = new StringBuilder(Math.min(MAX_DETALHES, 256));
+        for (MovimentacaoItem item : mov.getItens()) {
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(formatarItem(item));
+            if (sb.length() > MAX_DETALHES) break;
         }
-        return texto;
+        if (sb.length() > MAX_DETALHES) {
+            sb.setLength(MAX_DETALHES - 3);
+            sb.append("...");
+        }
+        return sb.toString();
     }
 
     private String formatarItem(MovimentacaoItem item) {

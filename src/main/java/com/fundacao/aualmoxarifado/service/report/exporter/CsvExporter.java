@@ -2,9 +2,10 @@ package com.fundacao.aualmoxarifado.service.report.exporter;
 
 import org.springframework.stereotype.Component;
 
+import java.io.BufferedWriter;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -15,27 +16,54 @@ import java.util.List;
 @Component
 public class CsvExporter implements Exporter {
 
-    private static final String SEP = ";";
+    private static final char SEP = ';';
 
     @Override public String contentType()    { return "text/csv;charset=UTF-8"; }
     @Override public String fileExtension()  { return "csv"; }
 
     @Override
-    public void exportar(String titulo, List<String> cabecalhos, List<List<String>> linhas, OutputStream out) {
-        try (PrintWriter pw = new PrintWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8))) {
-            // BOM UTF-8 para Excel
-            pw.write('﻿');
-            pw.println(String.join(SEP, cabecalhos.stream().map(CsvExporter::escapar).toList()));
-            for (List<String> linha : linhas) {
-                pw.println(String.join(SEP, linha.stream().map(CsvExporter::escapar).toList()));
-            }
+    public void exportar(String titulo, List<String> cabecalhos, List<List<String>> linhas, OutputStream out)
+            throws IOException {
+        // Não fecha o stream: o contrato do Exporter diz que o chamador fecha —
+        // essencial para permitir escrita direta no OutputStream da resposta HTTP.
+        BufferedWriter w = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8));
+        // BOM UTF-8 para Excel
+        w.write('﻿');
+
+        // StringBuilder reutilizado: evita 1 Stream + 1 List + 1 String de join
+        // por linha (pressão de GC pura em relatórios grandes).
+        StringBuilder sb = new StringBuilder(256);
+        escreverLinha(w, sb, cabecalhos);
+        for (List<String> linha : linhas) {
+            escreverLinha(w, sb, linha);
         }
+        w.flush();
     }
 
-    private static String escapar(String s) {
-        if (s == null) return "";
-        boolean precisa = s.contains(SEP) || s.contains("\"") || s.contains("\n");
-        String v = s.replace("\"", "\"\"");
-        return precisa ? "\"" + v + "\"" : v;
+    private static void escreverLinha(BufferedWriter w, StringBuilder sb, List<String> celulas)
+            throws IOException {
+        sb.setLength(0);
+        for (int i = 0; i < celulas.size(); i++) {
+            if (i > 0) sb.append(SEP);
+            escapar(sb, celulas.get(i));
+        }
+        sb.append('\n');
+        w.write(sb.toString());
+    }
+
+    private static void escapar(StringBuilder sb, String s) {
+        if (s == null || s.isEmpty()) return;
+        boolean precisa = s.indexOf(SEP) >= 0 || s.indexOf('"') >= 0 || s.indexOf('\n') >= 0;
+        if (!precisa) {
+            sb.append(s);
+            return;
+        }
+        sb.append('"');
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '"') sb.append('"');
+            sb.append(c);
+        }
+        sb.append('"');
     }
 }

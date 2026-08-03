@@ -50,10 +50,8 @@ public class MovimentacaoApiController {
             @PageableDefault(size = 20, sort = "data", direction = Sort.Direction.DESC)
             Pageable pageable) {
 
-        Page<MovimentacaoResumoDTO> page = service
-                .listar(tipo, status, materialId, setorId, inicio, fim, pageable)
-                .map(MovimentacaoResumoDTO::from);
-
-        return PageResponse.of(page);
+        // Mapeamento para DTO acontece no service, dentro da transação read-only.
+        return PageResponse.of(
+                service.listarResumo(tipo, status, materialId, setorId, inicio, fim, pageable));
     }
 }

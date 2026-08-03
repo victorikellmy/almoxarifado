@@ -57,16 +57,7 @@
                         <div class="col-md-3">
                             <div class="text-muted small text-uppercase" style="letter-spacing:.05em;">Status</div>
                             <div class="mt-1">
-                                <span class="status-pill"
-                                      th:classappend="${movimentacao.status.name() == 'PENDENTE_APROVACAO'} ? 'text-warning'
-                                                    : (${movimentacao.status.name() == 'APROVADO'} ? 'text-info'
-                                                    : (${movimentacao.status.name() == 'ENTREGUE'} ? 'text-success'
-                                                    : 'text-danger'))"
-                                      th:style="${movimentacao.status.name() == 'PENDENTE_APROVACAO'} ? 'background:#fef3c7;'
-                                              : (${movimentacao.status.name() == 'APROVADO'} ? 'background:#e0f2fe;'
-                                              : (${movimentacao.status.name() == 'ENTREGUE'} ? 'background:#d1fae5;'
-                                              : 'background:#fee2e2;'))"
-                                      th:text="${movimentacao.status}"></span>
+                                <span th:replace="~{fragments/status :: pill(${movimentacao.status.name()})}"></span>
                             </div>
                         </div>
                         <div class="col-md-3">
@@ -129,26 +120,25 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr th:each="i, it : ${movimentacao.itens}">
+                        <tr th:each="i, it : ${movimentacao.itens}"
+                            th:with="mat=${i.material}, sub=${i.material.subcategoria}">
                             <td class="text-muted" th:text="${it.count}"></td>
-                            <td><code th:text="${i.material.codigoSku} ?: '—'"></code></td>
-                            <td class="fw-semibold" th:text="${i.material.nome}"></td>
+                            <td><code th:text="${mat.codigoSku} ?: '—'"></code></td>
+                            <td class="fw-semibold" th:text="${mat.nome}"></td>
                             <td>
-                                <span th:if="${i.material.subcategoria}">
+                                <span th:if="${sub}">
                                     <span class="badge bg-primary me-1"
-                                          th:text="${i.material.subcategoria.area.sigla}"></span>
+                                          th:text="${sub.area.sigla}"></span>
                                     <span class="badge bg-info"
-                                          th:text="${i.material.subcategoria.sigla}"></span>
+                                          th:text="${sub.sigla}"></span>
                                 </span>
                             </td>
-                            <td class="text-muted" th:text="${i.material.unidadeMedida} ?: '—'"></td>
+                            <td class="text-muted" th:text="${mat.unidadeMedida} ?: '—'"></td>
                             <td class="text-end fw-bold" th:text="${i.quantidade}"></td>
                             <td class="text-end"
                                 th:text="${i.valorUnitario != null ? 'R$ ' + #numbers.formatDecimal(i.valorUnitario, 1, 2) : '—'}"></td>
                             <td class="text-end"
-                                th:text="${i.valorUnitario != null and i.quantidade != null ?
-                                          'R$ ' + #numbers.formatDecimal(i.valorUnitario.multiply(new java.math.BigDecimal(i.quantidade)), 1, 2)
-                                          : '—'}"></td>
+                                th:text="${i.subtotal != null ? 'R$ ' + #numbers.formatDecimal(i.subtotal, 1, 2) : '—'}"></td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(movimentacao.itens)}">
                             <td colspan="8" class="empty-state">

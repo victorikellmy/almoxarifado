@@ -17,10 +17,10 @@
             </div>
 
             <!-- Bloco de alerta consolidado (RN06) -->
-            <div th:if="${!#lists.isEmpty(alertas)}" class="alert alert-warning d-flex align-items-start gap-2 mb-4">
+            <div th:if="${qtdAlertas > 0}" class="alert alert-warning d-flex align-items-start gap-2 mb-4">
                 <i class="bi bi-exclamation-triangle fs-5"></i>
                 <div>
-                    <strong><span th:text="${#lists.size(alertas)}"></span> material(is) abaixo do mínimo.</strong>
+                    <strong><span th:text="${qtdAlertas}"></span> material(is) abaixo do mínimo.</strong>
                     <a href="/materiais?emAlerta=true" class="alert-link ms-1">Ver apenas em alerta</a>
                 </div>
             </div>
@@ -112,10 +112,10 @@
                                 th:text="${m.estoqueAtual}"></td>
                             <td class="text-end text-muted" th:text="${m.estoqueMinimo}"></td>
                             <td>
-                                <span th:if="${m.estoqueAbaixoDoMinimo}"
-                                      class="status-pill text-danger" style="background:#fee2e2;">Repor</span>
-                                <span th:unless="${m.estoqueAbaixoDoMinimo}"
-                                      class="status-pill text-success" style="background:#d1fae5;">OK</span>
+                                <th:block th:if="${m.estoqueAbaixoDoMinimo}"><span
+                                        th:replace="~{fragments/status :: pill('Repor')}"></span></th:block>
+                                <th:block th:unless="${m.estoqueAbaixoDoMinimo}"><span
+                                        th:replace="~{fragments/status :: pill('OK')}"></span></th:block>
                             </td>
                             <td class="text-end">
                                 <a th:href="@{|/materiais/${m.id}/etiqueta|}"

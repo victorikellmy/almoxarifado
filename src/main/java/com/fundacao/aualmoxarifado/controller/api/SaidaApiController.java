@@ -30,7 +30,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
@@ -85,11 +87,9 @@ public class SaidaApiController {
             @PageableDefault(size = 20, sort = "data", direction = Sort.Direction.DESC)
             Pageable pageable) {
 
-        Page<MovimentacaoResumoDTO> page = movimentacaoService
-                .listar(TipoMovimentacao.SAIDA, status, materialId, setorId, inicio, fim, pageable)
-                .map(MovimentacaoResumoDTO::from);
-
-        return PageResponse.of(page);
+        // Mesmo endpoint da listagem geral com o tipo fixado — lógica única no service.
+        return PageResponse.of(movimentacaoService.listarResumo(
+                TipoMovimentacao.SAIDA, status, materialId, setorId, inicio, fim, pageable));
     }
 
     @GetMapping("/{id}")
@@ -122,13 +122,26 @@ public class SaidaApiController {
         Setor setor = setorRepository.findById(request.setorDestinoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Setor", request.setorDestinoId()));
 
+        // Resolve todos os SKUs bipados numa única query IN, em vez de 1 SELECT
+        // por item — uma saída de 50 bipagens passa de 50 queries para 1.
+        Map<String, Long> idPorSku = new HashMap<>();
+        List<String> skus = request.itens().stream()
+                .map(item -> sanitizarSku(item.codigoSku()))
+                .distinct()
+                .toList();
+        for (Material material : materialRepository.findByCodigoSkuIn(skus)) {
+            idPorSku.put(material.getCodigoSku(), material.getId());
+        }
+
         List<LinhaItem> linhas = new ArrayList<>(request.itens().size());
         for (ItemSaidaDTO item : request.itens()) {
             String sku = sanitizarSku(item.codigoSku());
-            Material material = materialRepository.findByCodigoSku(sku)
-                    .orElseThrow(() -> new RecursoNaoEncontradoException(
-                            "Material para o SKU '" + sku + "' não encontrado."));
-            linhas.add(new LinhaItem(material.getId(), item.quantidade()));
+            Long materialId = idPorSku.get(sku);
+            if (materialId == null) {
+                throw new RecursoNaoEncontradoException(
+                        "Material para o SKU '" + sku + "' não encontrado.");
+            }
+            linhas.add(new LinhaItem(materialId, item.quantidade()));
         }
 
         Movimentacao salva = movimentacaoService.registrarSaida(

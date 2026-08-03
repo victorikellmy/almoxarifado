@@ -12,14 +12,7 @@
             <div class="page-header">
                 <div>
                     <h2 class="d-inline-block me-3">Compra #<span th:text="${compra.id}"></span></h2>
-                    <span class="status-pill"
-                          th:classappend="${compra.status.name() == 'AGUARDANDO_COMPRA'} ? 'text-warning'
-                                        : (${compra.status.name() == 'COMPRA_REALIZADA'} ? 'text-success'
-                                        : 'text-danger')"
-                          th:style="${compra.status.name() == 'AGUARDANDO_COMPRA'} ? 'background:#fef3c7;'
-                                  : (${compra.status.name() == 'COMPRA_REALIZADA'} ? 'background:#d1fae5;'
-                                  : 'background:#fee2e2;')"
-                          th:text="${compra.status}"></span>
+                    <span th:replace="~{fragments/status :: pill(${compra.status.name()})}"></span>
                 </div>
                 <div class="d-flex gap-2">
                     <a th:if="${compra.status.name() == 'AGUARDANDO_COMPRA'}"

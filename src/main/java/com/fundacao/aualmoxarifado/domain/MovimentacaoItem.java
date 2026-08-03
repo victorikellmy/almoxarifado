@@ -53,4 +53,15 @@ public class MovimentacaoItem {
      */
     @Column(name = "valor_unitario", precision = 12, scale = 2)
     private BigDecimal valorUnitario;
+
+    /**
+     * Subtotal (quantidade × valor unitário) calculado — usado pelos templates.
+     * O Thymeleaf 3.1+ proíbe {@code new}/{@code T()} em expressões web, então
+     * o cálculo precisa viver aqui (mesmo padrão de {@code ItemCompra}).
+     */
+    @Transient
+    public BigDecimal getSubtotal() {
+        if (valorUnitario == null || quantidade == null) return null;
+        return valorUnitario.multiply(BigDecimal.valueOf(quantidade));
+    }
 }

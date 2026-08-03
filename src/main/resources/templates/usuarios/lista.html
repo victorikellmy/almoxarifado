@@ -45,10 +45,10 @@
                                       th:text="${u.perfil}"></span>
                             </td>
                             <td>
-                                <span th:if="${u.ativo}" class="status-pill text-success"
-                                      style="background:#d1fae5;">Ativo</span>
-                                <span th:unless="${u.ativo}" class="status-pill text-secondary"
-                                      style="background:#e5e7eb;">Inativo</span>
+                                <th:block th:if="${u.ativo}"><span
+                                        th:replace="~{fragments/status :: pill('Ativo')}"></span></th:block>
+                                <th:block th:unless="${u.ativo}"><span
+                                        th:replace="~{fragments/status :: pill('Inativo')}"></span></th:block>
                             </td>
                             <td class="text-end">
                                 <a th:href="@{|/usuarios/${u.id}/editar|}" class="btn btn-sm btn-outline-primary">

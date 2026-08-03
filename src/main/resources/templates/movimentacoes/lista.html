@@ -132,16 +132,7 @@
                                 <span th:if="${m.retiradoPor == null}" class="placeholder-dash">—</span>
                             </td>
                             <td>
-                                <span class="status-pill"
-                                      th:classappend="${m.status.name() == 'PENDENTE_APROVACAO'} ? 'text-warning'
-                                                    : (${m.status.name() == 'APROVADO'} ? 'text-info'
-                                                    : (${m.status.name() == 'ENTREGUE'} ? 'text-success'
-                                                    : 'text-danger'))"
-                                      th:style="${m.status.name() == 'PENDENTE_APROVACAO'} ? 'background:#fef3c7;'
-                                              : (${m.status.name() == 'APROVADO'} ? 'background:#e0f2fe;'
-                                              : (${m.status.name() == 'ENTREGUE'} ? 'background:#d1fae5;'
-                                              : 'background:#fee2e2;'))"
-                                      th:text="${m.status}"></span>
+                                <span th:replace="~{fragments/status :: pill(${m.status.name()})}"></span>
                             </td>
                             <td class="text-end" onclick="event.stopPropagation();">
                                 <a th:href="@{|/movimentacoes/${m.id}|}"

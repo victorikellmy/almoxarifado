@@ -15,7 +15,10 @@ import java.math.BigDecimal;
  * (RN09); em compras DIRETAS, é o que será REPASSADO ao setor (RN10).
  */
 @Entity
-@Table(name = "item_compra")
+@Table(name = "item_compra", indexes = {
+        @Index(name = "idx_item_compra_compra",   columnList = "compra_id"),
+        @Index(name = "idx_item_compra_material", columnList = "material_id")
+})
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ItemCompra {
 
