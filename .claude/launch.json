@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "almoxarifado",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd /d \"C:\\Users\\Fa Saude\\almoxarifado\" && gradlew.bat bootRun"],
+      "port": 8080
+    }
+  ]
+}

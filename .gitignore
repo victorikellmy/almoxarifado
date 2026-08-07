@@ -1,6 +1,21 @@
 HELP.md
 .gradle
 build/
+
+### Segredos e ambiente local — NUNCA versionar ###
+.env
+.env.*
+!.env.example
+
+### Arquivos enviados pelos usuários (volume em produção) ###
+uploads/
+
+### Dumps e bancos locais ###
+*.sql.gz
+*.dump
+*.backup
+*.mv.db
+*.h2.db
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
