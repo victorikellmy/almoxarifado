@@ -20,6 +20,17 @@ public interface SubcategoriaRepository extends JpaRepository<Subcategoria, Long
     Optional<Subcategoria> findByAreaAndSigla(Area area, String sigla);
 
     /**
+     * Buscas tolerantes usadas pela importação de planilhas — a coluna
+     * "subcategoria" aceita tanto o nome ("Consumo") quanto a sigla ("CON"),
+     * em qualquer caixa.
+     */
+    Optional<Subcategoria> findByAreaIdAndSiglaIgnoreCase(Long areaId, String sigla);
+
+    Optional<Subcategoria> findByAreaIdAndNomeIgnoreCase(Long areaId, String nome);
+
+    boolean existsByAreaIdAndSiglaIgnoreCase(Long areaId, String sigla);
+
+    /**
      * RN07/protege exclusão de Área que ainda tenha subcategorias filhas.
      * (Usado pelo {@code AreaService.excluir}.)
      */

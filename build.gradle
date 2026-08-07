@@ -3,7 +3,9 @@ plugins {
     id 'org.springframework.boot' version '4.0.6'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'com.netflix.dgs.codegen' version '8.3.0'
-    id 'org.graalvm.buildtools.native' version '0.11.5'
+    // Plugin GraalVM Native removido: o deploy roda em JVM comum (java -jar).
+    // O passo de AOT dele sobe o contexto Spring durante o build, o que exige
+    // banco configurado e conflita com o fail-fast de produção.
 }
 
 group = 'com.fundacao'
@@ -27,9 +29,19 @@ ext {
 dependencies {
     implementation 'org.springframework.modulith:spring-modulith-starter-core'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    // Healthcheck do container (GET /actuator/health)
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    // Migrations versionadas do schema PostgreSQL (src/main/resources/db/migration)
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    // Autenticação e controle de acesso (login + perfis ADMIN/PADRAO)
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
+    // Leitura/escrita de planilhas na importação em massa de materiais (.xlsx e .xls)
+    implementation 'org.apache.poi:poi-ooxml:5.4.1'
     runtimeOnly 'com.h2database:h2'
     runtimeOnly 'org.postgresql:postgresql'
     compileOnly 'org.projectlombok:lombok'
@@ -58,4 +70,12 @@ generateJava {
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+// Desenvolvimento local: `gradlew bootRun` sobe com o perfil dev (H2 em memória
+// + dados de demonstração). Produção NUNCA passa por aqui — o container roda
+// `java -jar` direto, caindo no perfil default, que exige PostgreSQL via
+// variáveis de ambiente e falha rápido se faltarem.
+tasks.named('bootRun') {
+    args = ['--spring.profiles.active=dev']
 }

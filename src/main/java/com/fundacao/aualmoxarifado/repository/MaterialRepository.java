@@ -6,8 +6,20 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface MaterialRepository extends JpaRepository<Material, Long> {
+
+    /** Importação em massa: localiza o material a ATUALIZAR quando a planilha traz o SKU. */
+    Optional<Material> findByCodigoSku(String codigoSku);
+
+    /**
+     * Importação em massa: quando a planilha NÃO traz SKU, o par
+     * (subcategoria + nome) é a chave natural usada para decidir entre
+     * criar um material novo ou atualizar o existente — evitando duplicar
+     * "Papel A4" toda vez que a planilha for reenviada.
+     */
+    Optional<Material> findFirstBySubcategoriaAndNomeIgnoreCase(Subcategoria subcategoria, String nome);
 
     /** RN06 - retorna materiais cujo estoque atual está igual ou abaixo do mínimo. */
     @Query("""

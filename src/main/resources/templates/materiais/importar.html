@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Importar materiais')}"></head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('materiais-importar')}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout :: topbar('Importar materiais',
+                             'Carga em massa do catálogo e do estoque por planilha (RF12)')}"></header>
+
+        <div class="app-content">
+
+            <div class="page-header">
+                <div>
+                    <p class="page-subtitle mb-0">
+                        Envie um arquivo <strong>.xlsx</strong>, <strong>.xls</strong> ou
+                        <strong>.csv</strong> para cadastrar vários materiais de uma vez —
+                        ou para atualizar os que já existem.
+                    </p>
+                </div>
+                <a href="/materiais" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Voltar ao catálogo
+                </a>
+            </div>
+
+            <div th:if="${erro}" class="alert alert-danger d-flex align-items-start gap-2 mb-4">
+                <i class="bi bi-x-octagon fs-5"></i>
+                <div><strong>Não foi possível importar.</strong> <span th:text="${erro}"></span></div>
+            </div>
+
+            <!-- ============================================================
+                 1. FORMULÁRIO DE ENVIO
+                 ============================================================ -->
+            <div class="card card-pad mb-4">
+                <h5 class="mb-1">1. Enviar planilha</h5>
+                <p class="text-muted small mb-4">
+                    Recomendamos <strong>simular</strong> antes: a simulação mostra exatamente o que
+                    aconteceria, linha por linha, sem gravar nada no sistema.
+                </p>
+
+                <form method="post" th:action="@{/materiais/importar}" enctype="multipart/form-data">
+                    <div class="row g-3">
+                        <div class="col-lg-5">
+                            <label class="form-label" for="arquivo">Arquivo</label>
+                            <input type="file" class="form-control" id="arquivo" name="arquivo"
+                                   accept=".xlsx,.xls,.csv" required>
+                            <div class="form-text">
+                                Até <span th:text="${maxLinhas}">5000</span> linhas por arquivo.
+                                CSV pode usar “;” ou “,”.
+                            </div>
+                        </div>
+
+                        <div class="col-lg-4">
+                            <label class="form-label" for="modoEstoque">O que fazer com a coluna <code>estoque_atual</code></label>
+                            <select class="form-select" id="modoEstoque" name="modoEstoque">
+                                <option th:each="m : ${modos}"
+                                        th:value="${m.name()}"
+                                        th:text="${m.rotulo}"
+                                        th:selected="${modoEstoqueSelecionado != null
+                                                       ? modoEstoqueSelecionado.name() == m.name()
+                                                       : m.name() == 'SOMAR'}"></option>
+                            </select>
+                            <div class="form-text">
+                                <strong>Somar</strong>: reabastecimento — gera movimentação de entrada.<br>
+                                <strong>Definir</strong>: carga inicial ou inventário — sobrescreve o saldo.
+                            </div>
+                        </div>
+
+                        <div class="col-lg-3">
+                            <label class="form-label d-block">Cadastros auxiliares</label>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" value="true"
+                                       id="criarAusentes" name="criarAusentes"
+                                       th:checked="${criarAusentesSelecionado}">
+                                <label class="form-check-label" for="criarAusentes">
+                                    Criar áreas e subcategorias que não existirem
+                                </label>
+                            </div>
+                            <div class="form-text">
+                                Sem esta opção, uma área desconhecida vira erro na linha.
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="submit" name="simular" value="true" class="btn btn-outline-primary">
+                            <i class="bi bi-eyeglasses"></i> Simular (não grava)
+                        </button>
+                        <button type="submit" name="simular" value="false" class="btn btn-primary">
+                            <i class="bi bi-upload"></i> Importar de verdade
+                        </button>
+                        <a href="/materiais/importar/modelo" class="btn btn-outline-secondary ms-auto">
+                            <i class="bi bi-file-earmark-arrow-down"></i> Baixar planilha-modelo
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ============================================================
+                 2. RESULTADO
+                 ============================================================ -->
+            <div th:if="${resultado}" class="mb-4">
+
+                <div th:if="${resultado.simulacao}"
+                     class="alert alert-warning d-flex align-items-start gap-2">
+                    <i class="bi bi-eyeglasses fs-5"></i>
+                    <div>
+                        <strong>Isto foi apenas uma simulação — nada foi gravado.</strong>
+                        Confira o relatório abaixo e, se estiver correto, envie o mesmo arquivo
+                        em “Importar de verdade”.
+                    </div>
+                </div>
+                <div th:unless="${resultado.simulacao}"
+                     class="alert d-flex align-items-start gap-2"
+                     th:classappend="${resultado.temErros} ? 'alert-warning' : 'alert-success'">
+                    <i class="bi fs-5"
+                       th:classappend="${resultado.temErros} ? 'bi-exclamation-triangle' : 'bi-check-circle'"></i>
+                    <div>
+                        <strong>Importação concluída.</strong>
+                        <span th:if="${resultado.temErros}">
+                            As linhas com erro <strong>não</strong> foram gravadas — corrija-as na planilha
+                            e envie novamente só elas.
+                        </span>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-6 col-lg-3">
+                        <div class="card stat-card">
+                            <div class="stat-icon bg-brand"><i class="bi bi-list-ol"></i></div>
+                            <div>
+                                <p class="stat-label">Linhas lidas</p>
+                                <p class="stat-value" th:text="${resultado.totalLinhas}">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card stat-card">
+                            <div class="stat-icon bg-success-soft"><i class="bi bi-plus-circle"></i></div>
+                            <div>
+                                <p class="stat-label" th:text="${resultado.simulacao} ? 'Serão criados' : 'Criados'">Criados</p>
+                                <p class="stat-value" th:text="${resultado.totalCriados}">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card stat-card">
+                            <div class="stat-icon bg-info-soft"><i class="bi bi-arrow-repeat"></i></div>
+                            <div>
+                                <p class="stat-label" th:text="${resultado.simulacao} ? 'Serão atualizados' : 'Atualizados'">Atualizados</p>
+                                <p class="stat-value" th:text="${resultado.totalAtualizados}">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-lg-3">
+                        <div class="card stat-card">
+                            <div class="stat-icon bg-danger-soft"><i class="bi bi-x-circle"></i></div>
+                            <div>
+                                <p class="stat-label">Com erro</p>
+                                <p class="stat-value" th:text="${resultado.totalErros}">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div th:if="${!#lists.isEmpty(resultado.colunasIgnoradas)}"
+                     class="alert alert-warning d-flex align-items-start gap-2">
+                    <i class="bi bi-info-circle fs-5"></i>
+                    <div>
+                        Colunas do arquivo que o sistema não reconheceu e ignorou:
+                        <span th:each="c,it : ${resultado.colunasIgnoradas}">
+                            <code th:text="${c}"></code><span th:if="${!it.last}">, </span>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="card table-card">
+                    <div class="table-card-head">
+                        <div>
+                            <h5 class="mb-0">Relatório linha a linha</h5>
+                            <small class="text-muted" th:text="${resultado.nomeArquivo}"></small>
+                        </div>
+                    </div>
+                    <div class="table-responsive" style="max-height: 30rem; overflow-y: auto;">
+                        <table class="table">
+                            <thead>
+                            <tr>
+                                <th style="width: 5rem;">Linha</th>
+                                <th>Material</th>
+                                <th>SKU</th>
+                                <th>Situação</th>
+                                <th>Detalhe</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="l : ${resultado.linhas}"
+                                th:style="${l.falhou} ? 'background:#fef2f2;'">
+                                <td class="text-muted" th:text="${l.numeroLinha}"></td>
+                                <td class="fw-semibold" th:text="${l.nome}"></td>
+                                <td><code th:if="${l.sku}" th:text="${l.sku}"></code></td>
+                                <td>
+                                    <span class="badge"
+                                          th:classappend="'bg-' + ${l.situacao.cor}"
+                                          th:text="${l.situacao.rotulo}"></span>
+                                </td>
+                                <td>
+                                    <div th:text="${l.mensagem}"></div>
+                                    <div th:each="a : ${l.avisos}" class="text-muted small">
+                                        <i class="bi bi-dot"></i><span th:text="${a}"></span>
+                                    </div>
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================================
+                 3. COMO O ARQUIVO DEVE ESTAR ESTRUTURADO
+                 ============================================================ -->
+            <div class="card card-pad mb-4">
+                <h5 class="mb-1">2. Como o arquivo deve estar estruturado</h5>
+                <p class="text-muted small mb-4">
+                    A <strong>primeira linha</strong> da planilha precisa conter os títulos das colunas.
+                    A ordem não importa e colunas extras são ignoradas — o sistema se orienta pelos
+                    títulos. Se o arquivo tiver várias abas, apenas a <strong>primeira</strong> é lida.
+                </p>
+
+                <h6 class="mb-2">Exemplo de preenchimento</h6>
+                <div class="table-responsive mb-2">
+                    <table class="table table-bordered" style="font-size: .8rem; white-space: nowrap;">
+                        <thead>
+                        <tr>
+                            <th th:each="c : ${colunas}">
+                                <code th:text="${c.nome}"></code>
+                                <span th:if="${c.obrigatoria}" class="text-danger" title="Obrigatória">*</span>
+                            </th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="linha : ${exemplos}">
+                            <td th:each="valor : ${linha}" th:text="${valor}"
+                                th:classappend="${#strings.isEmpty(valor)} ? 'text-muted'"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="form-text mb-4">
+                    <i class="bi bi-lightbulb"></i>
+                    Repare na <strong>última linha</strong>: como o <code>sku</code> está preenchido,
+                    o sistema localiza o material já existente e apenas atualiza os campos informados —
+                    por isso área e subcategoria podem ficar em branco.
+                    Nas demais linhas o <code>sku</code> está vazio, então o material é
+                    <strong>criado</strong> e o código é gerado automaticamente (RF18).
+                </p>
+
+                <h6 class="mb-2">Significado de cada coluna</h6>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th style="width: 12rem;">Coluna</th>
+                            <th style="width: 8rem;">Obrigatória</th>
+                            <th>O que preencher</th>
+                            <th style="width: 12rem;">Exemplo</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="c : ${colunas}">
+                            <td><code th:text="${c.nome}"></code></td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${c.obrigatoria} ? 'bg-danger' : 'bg-secondary'"
+                                      th:text="${c.obrigatoriedade}"></span>
+                            </td>
+                            <td th:text="${c.descricao}"></td>
+                            <td class="text-muted" th:text="${c.exemplo}"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="form-text mt-2 mb-0">
+                    <strong>*</strong> <code>area</code> e <code>subcategoria</code> são obrigatórias
+                    apenas quando <code>sku</code> está em branco, isto é, quando o material é novo.
+                </p>
+            </div>
+
+            <!-- ============================================================
+                 4. REGRAS QUE VALEM NA IMPORTAÇÃO
+                 ============================================================ -->
+            <div class="card card-pad">
+                <h5 class="mb-3">3. Regras que a importação aplica</h5>
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <h6 class="mb-1"><i class="bi bi-upc-scan text-muted me-1"></i> SKU é gerado pelo sistema</h6>
+                        <p class="text-muted small mb-0">
+                            Deixe a coluna <code>sku</code> vazia para materiais novos: o código sai no
+                            formato <code>AREA-SUB-00001</code> e vira a identidade física do item
+                            na etiqueta. Preencher um SKU inexistente resulta em erro na linha, e o SKU
+                            de um material já cadastrado nunca é alterado.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mb-1"><i class="bi bi-arrow-repeat text-muted me-1"></i> Reenviar o arquivo não duplica</h6>
+                        <p class="text-muted small mb-0">
+                            Um material é considerado o mesmo quando tem o mesmo <em>nome</em> dentro da
+                            mesma <em>subcategoria</em>. Nesse caso a linha atualiza o cadastro em vez de
+                            criar um item repetido.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mb-1"><i class="bi bi-eraser text-muted me-1"></i> Campo em branco não apaga dado</h6>
+                        <p class="text-muted small mb-0">
+                            Numa atualização, colunas deixadas em branco preservam o que já está
+                            cadastrado. Para zerar um valor, informe <code>0</code> explicitamente.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mb-1"><i class="bi bi-clock-history text-muted me-1"></i> Estoque com histórico</h6>
+                        <p class="text-muted small mb-0">
+                            No modo <em>Somar</em>, cada quantidade importada vira uma movimentação de
+                            <strong>entrada</strong> (RN05) e fica rastreável. No modo <em>Definir</em> o
+                            saldo é sobrescrito sem movimentação — use apenas para carga inicial ou
+                            correção de inventário.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mb-1"><i class="bi bi-shield-check text-muted me-1"></i> Uma linha ruim não derruba o lote</h6>
+                        <p class="text-muted small mb-0">
+                            Cada linha é gravada isoladamente. Se a linha 37 tiver um valor inválido,
+                            ela aparece em vermelho no relatório e as demais entram normalmente.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mb-1"><i class="bi bi-translate text-muted me-1"></i> Números e acentos</h6>
+                        <p class="text-muted small mb-0">
+                            Valores aceitam <code>1.234,56</code> ou <code>1234.56</code>. Quantidades
+                            devem ser inteiras. CSV salvo pelo Excel em ANSI é lido corretamente —
+                            acentos não viram símbolos estranhos.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>
