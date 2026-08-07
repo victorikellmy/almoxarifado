@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <!--
   Fragments compartilhados de layout (Thymeleaf).
   Uso típico em uma página:
@@ -378,6 +379,8 @@
             <i class="bi bi-tags"></i> Subcategorias</a></li>
         <li><a href="/materiais" th:classappend="${ativo == 'materiais'} ? 'active'">
             <i class="bi bi-box-seam"></i> Materiais</a></li>
+        <li><a href="/materiais/importar" th:classappend="${ativo == 'materiais-importar'} ? 'active'">
+            <i class="bi bi-file-earmark-spreadsheet"></i> Importar planilha</a></li>
         <li><a href="/setores" th:classappend="${ativo == 'setores'} ? 'active'">
             <i class="bi bi-building"></i> Setores</a></li>
     </ul>
@@ -401,8 +404,25 @@
             <i class="bi bi-bar-chart"></i> Consumo por setor</a></li>
     </ul>
 
-    <div class="sidebar-foot">
-        <i class="bi bi-shield-check me-1"></i> Sessão segura
+    <th:block sec:authorize="hasRole('ADMIN')">
+        <div class="sidebar-section-title">Administração</div>
+        <ul class="sidebar-nav">
+            <li><a href="/usuarios" th:classappend="${ativo == 'usuarios'} ? 'active'">
+                <i class="bi bi-people"></i> Usuários</a></li>
+        </ul>
+    </th:block>
+
+    <div class="sidebar-foot d-flex align-items-center justify-content-between gap-2">
+        <span class="text-truncate">
+            <i class="bi bi-person-circle me-1"></i>
+            <span sec:authentication="name">usuário</span>
+        </span>
+        <form th:action="@{/logout}" method="post" class="d-inline mb-0">
+            <button type="submit" class="btn btn-sm btn-outline-light border-0 p-1"
+                    title="Sair do sistema" style="color: var(--text-sidebar-muted);">
+                <i class="bi bi-box-arrow-right"></i>
+            </button>
+        </form>
     </div>
 </aside>
 

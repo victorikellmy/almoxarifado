@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Usuários')}"></head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('usuarios')}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout :: topbar('Usuários', 'Contas de acesso ao sistema')}"></header>
+
+        <div class="app-content">
+
+            <div class="page-header">
+                <div></div>
+                <a href="/usuarios/novo" class="btn btn-primary">
+                    <i class="bi bi-person-plus"></i> Novo usuário
+                </a>
+            </div>
+
+            <div th:if="${sucesso}" class="alert alert-success d-flex align-items-center gap-2 mb-4">
+                <i class="bi bi-check-circle"></i> <span th:text="${sucesso}"></span>
+            </div>
+            <div th:if="${erro}" class="alert alert-danger d-flex align-items-center gap-2 mb-4">
+                <i class="bi bi-x-octagon"></i> <span th:text="${erro}"></span>
+            </div>
+
+            <div class="card table-card">
+                <div class="table-card-head">
+                    <div>
+                        <h5 class="mb-0">Contas cadastradas</h5>
+                        <small class="text-muted"><span th:text="${#lists.size(usuarios)}"></span> usuário(s)</small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Login</th>
+                            <th>Perfil</th>
+                            <th>Situação</th>
+                            <th>Criado em</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="u : ${usuarios}">
+                            <td class="fw-semibold" th:text="${u.nome}"></td>
+                            <td><code th:text="${u.username}"></code></td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${u.perfil.name() == 'ADMIN'} ? 'bg-primary' : 'bg-secondary'"
+                                      th:text="${u.perfil.rotulo}"></span>
+                            </td>
+                            <td>
+                                <span th:if="${u.ativo}" class="status-pill text-success" style="background:#d1fae5;">Ativo</span>
+                                <span th:unless="${u.ativo}" class="status-pill text-danger" style="background:#fee2e2;">Desativado</span>
+                            </td>
+                            <td class="text-muted"
+                                th:text="${#temporals.format(u.criadoEm, 'dd/MM/yyyy HH:mm')}"></td>
+                            <td class="text-end">
+                                <a th:href="@{|/usuarios/${u.id}/editar|}" class="btn btn-sm btn-outline-primary"
+                                   title="Editar dados, perfil ou senha">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form th:action="@{|/usuarios/${u.id}/alternar-ativo|}" method="post" class="d-inline"
+                                      th:onsubmit="${u.ativo} ? 'return confirm(\'Desativar o acesso de ' + ${u.nome} + '?\');' : null">
+                                    <button th:if="${u.ativo}" class="btn btn-sm btn-outline-danger" title="Desativar acesso">
+                                        <i class="bi bi-person-slash"></i>
+                                    </button>
+                                    <button th:unless="${u.ativo}" class="btn btn-sm btn-outline-success" title="Reativar acesso">
+                                        <i class="bi bi-person-check"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(usuarios)}">
+                            <td colspan="6" class="empty-state">
+                                <i class="bi bi-people d-block mb-2"></i>
+                                Nenhum usuário cadastrado.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <p class="form-text mt-3">
+                <i class="bi bi-info-circle me-1"></i>
+                Usuários não são excluídos, apenas <strong>desativados</strong> — assim o histórico de
+                operações continua rastreável. O sistema impede desativar o último administrador ativo.
+            </p>
+
+        </div>
+    </main>
+</div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>
