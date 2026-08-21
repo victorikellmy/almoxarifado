@@ -54,7 +54,7 @@ public class PdfExporter implements Exporter {
             Font headerFont = new Font(Font.HELVETICA, 10, Font.BOLD, Color.WHITE);
             for (String h : cabecalhos) {
                 PdfPCell cell = new PdfPCell(new Phrase(h, headerFont));
-                cell.setBackgroundColor(new Color(23, 90, 138));
+                cell.setBackgroundColor(new Color(85, 67, 116)); // lilás 700 — cor da marca
                 cell.setHorizontalAlignment(Element.ALIGN_CENTER);
                 cell.setPadding(6f);
                 table.addCell(cell);

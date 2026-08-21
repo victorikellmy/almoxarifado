@@ -1,6 +1,7 @@
 /* =============================================================
    Claude Design — Sistema de design do Gerenciador Patrimonial
-   Paleta: azul corporativo profundo (#175a8a)
+   Paleta: lilás neutro (#6b5691) — diferencia o Almoxarifado dos
+   sistemas irmãos (Patrimônio azul, e o sistema verde)
    Suporte: Bootstrap 5.3 + Thymeleaf SSR + dark mode
    ============================================================= */
 
@@ -8,17 +9,17 @@
    1. TOKENS — Light mode (default)
    ============================================================ */
 :root {
-    /* Paleta primária — azul corporativo */
-    --primary-50:  #eaf3fa;
-    --primary-100: #d4e6f2;
-    --primary-200: #a9cde5;
-    --primary-300: #7eb4d7;
-    --primary-400: #4593c9;
-    --primary-500: #2776ad;
-    --primary-600: #175a8a;
-    --primary-700: #0f4269;
-    --primary-800: #0a2e4a;
-    --primary-900: #071c2e;
+    /* Paleta primária — lilás neutro */
+    --primary-50:  #f5f3f9;
+    --primary-100: #eae6f3;
+    --primary-200: #d5cce7;
+    --primary-300: #b9aad4;
+    --primary-400: #9a85bf;
+    --primary-500: #8069a9;
+    --primary-600: #6b5691;
+    --primary-700: #554374;
+    --primary-800: #3e3156;
+    --primary-900: #2a2139;
 
     /* Neutros — escala slate */
     --slate-50:  #f8fafc;
@@ -85,7 +86,7 @@
     --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
     --shadow-2: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.06);
     --shadow-3: 0 10px 15px -3px rgba(15, 23, 42, 0.10), 0 4px 6px -4px rgba(15, 23, 42, 0.08);
-    --shadow-focus: 0 0 0 3px rgba(23, 90, 138, 0.18);
+    --shadow-focus: 0 0 0 3px rgba(107, 86, 145, 0.18);
 
     /* Tipografia */
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -136,7 +137,7 @@
     --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
     --shadow-2: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
     --shadow-3: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
-    --shadow-focus: 0 0 0 3px rgba(69, 147, 201, 0.3);
+    --shadow-focus: 0 0 0 3px rgba(154, 133, 191, 0.3);
 }
 
 /* ============================================================
@@ -264,7 +265,7 @@ body:has(.app-sidebar) .navbar { margin-bottom: 0 !important; }
     justify-content: center;
     font-size: 1.05rem;
     flex-shrink: 0;
-    box-shadow: 0 4px 10px rgba(23, 90, 138, 0.25);
+    box-shadow: 0 4px 10px rgba(107, 86, 145, 0.25);
 }
 
 .sidebar-brand-text {
@@ -371,7 +372,7 @@ body:has(.app-sidebar) .navbar { margin-bottom: 0 !important; }
     background: rgba(255,255,255,0.04);
 }
 [data-theme="dark"] .sidebar-link.active {
-    background: rgba(69, 147, 201, 0.15);
+    background: rgba(154, 133, 191, 0.15);
     color: var(--primary-300);
 }
 [data-theme="dark"] .sidebar-link.active i { color: var(--primary-300); }
@@ -655,7 +656,7 @@ body:has(.app-sidebar) .navbar { margin-bottom: 0 !important; }
     flex-shrink: 0;
 }
 [data-theme="dark"] .form-section-icon {
-    background: rgba(69, 147, 201, 0.15);
+    background: rgba(154, 133, 191, 0.15);
     color: var(--primary-300);
 }
 .form-section-title {
@@ -934,7 +935,7 @@ body:has(.app-sidebar) .navbar { margin-bottom: 0 !important; }
     color: var(--primary-700);
 }
 [data-theme="dark"] .badge-conservacao {
-    background: rgba(69, 147, 201, 0.15);
+    background: rgba(154, 133, 191, 0.15);
     color: var(--primary-300);
 }
 
@@ -1085,9 +1086,9 @@ body:has(.app-sidebar) .navbar { margin-bottom: 0 !important; }
 }
 .filter-chip a:hover { opacity: 1; }
 [data-theme="dark"] .filter-chip {
-    background: rgba(69, 147, 201, 0.15);
+    background: rgba(154, 133, 191, 0.15);
     color: var(--primary-300);
-    border-color: rgba(69, 147, 201, 0.25);
+    border-color: rgba(154, 133, 191, 0.25);
 }
 
 /* ============================================================
@@ -1513,7 +1514,7 @@ body:has(.app-sidebar) .navbar { margin-bottom: 0 !important; }
 .kpi-icon-danger  { background: var(--danger-bg);   color: var(--danger-fg); }
 
 [data-theme="dark"] .kpi-icon-primary {
-    background: rgba(69, 147, 201, 0.15);
+    background: rgba(154, 133, 191, 0.15);
     color: var(--primary-300);
 }
 
@@ -1650,7 +1651,7 @@ a > .stat-card:hover { transform: translateY(-1px); }
 .stat-icon.bg-info-soft    { background: var(--info-bg);     color: var(--info-fg); }
 .stat-icon.bg-success-soft { background: var(--success-bg);  color: var(--success-fg); }
 [data-theme="dark"] .stat-icon.bg-brand {
-    background: rgba(39, 118, 173, 0.18);
+    background: rgba(128, 105, 169, 0.18);
     color: var(--primary-300);
 }
 
@@ -1747,7 +1748,7 @@ a > .stat-card:hover { transform: translateY(-1px); }
     color: #cbd5e1 !important;       /* mais legível que slate-400 */
 }
 [data-theme="dark"] code {
-    color: #93c5fd;                  /* azul-claro nice */
+    color: #c4b5fd;                  /* lavanda clara — acompanha a paleta lilás */
     background: rgba(148,163,184,.10);
     padding: 2px 6px;
     border-radius: 4px;
@@ -1876,7 +1877,7 @@ a > .stat-card:hover { transform: translateY(-1px); }
 .login-page {
     min-height: 100vh;
     display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(135deg, #0d6efd 0%, #084298 100%);
+    background: linear-gradient(135deg, #6b5691 0%, #3e3156 100%);
     padding: 1rem;
 }
 .login-page .login-card { max-width: 420px; width: 100%; border:0; border-radius:1rem; }
