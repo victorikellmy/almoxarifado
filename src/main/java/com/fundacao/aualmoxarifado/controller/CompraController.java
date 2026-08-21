@@ -7,6 +7,10 @@ import com.fundacao.aualmoxarifado.service.AnexoStorageService;
 import com.fundacao.aualmoxarifado.service.CompraService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -50,17 +54,25 @@ public class CompraController {
     // =====================================================================
 
     @GetMapping
-    public String listar(Model model) {
-        model.addAttribute("compras", compraService.listarTodas());
+    public String listar(@PageableDefault(size = 20, sort = "dataSolicitacao",
+                                          direction = Sort.Direction.DESC) Pageable pageable,
+                         Model model) {
+        Page<Compra> page = compraService.listarTodas(pageable);
+        model.addAttribute("page", page);
+        model.addAttribute("compras", page.getContent());
         model.addAttribute("titulo", "Histórico de Compras");
         model.addAttribute("filtro", "todas");
         return "compras/lista";
     }
 
-    /** RF15 - tela da fila de pré-compras pendentes. */
+    /** RF15 - tela da fila de pré-compras pendentes (FIFO). */
     @GetMapping("/aguardando")
-    public String listarAguardando(Model model) {
-        model.addAttribute("compras", compraService.listarAguardandoCompra());
+    public String listarAguardando(@PageableDefault(size = 20, sort = "dataSolicitacao",
+                                                    direction = Sort.Direction.ASC) Pageable pageable,
+                                   Model model) {
+        Page<Compra> page = compraService.listarAguardandoCompra(pageable);
+        model.addAttribute("page", page);
+        model.addAttribute("compras", page.getContent());
         model.addAttribute("titulo", "Fila — Aguardando Compra");
         model.addAttribute("filtro", "aguardando");
         return "compras/lista";

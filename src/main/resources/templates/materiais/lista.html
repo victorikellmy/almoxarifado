@@ -22,11 +22,54 @@
             </div>
 
             <!-- Bloco de alerta consolidado (RN06) -->
-            <div th:if="${!#lists.isEmpty(alertas)}" class="alert alert-warning d-flex align-items-start gap-2 mb-4">
+            <div th:if="${qtdAlertas > 0}" class="alert alert-warning d-flex align-items-start gap-2 mb-4">
                 <i class="bi bi-exclamation-triangle fs-5"></i>
                 <div>
-                    <strong><span th:text="${#lists.size(alertas)}"></span> material(is) abaixo do mínimo.</strong>
-                    Considere lançar uma pré-compra para reposição.
+                    <strong><span th:text="${qtdAlertas}"></span> material(is) abaixo do mínimo.</strong>
+                    <a href="/materiais?emAlerta=true" class="alert-link ms-1">Ver apenas em alerta</a>
+                </div>
+            </div>
+
+            <!-- Filtros -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <form method="get" action="/materiais" class="row g-2 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted mb-1">Nome</label>
+                            <input type="text" name="nome" class="form-control form-control-sm"
+                                   th:value="${filtroNome}" placeholder="Busca parcial...">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">SKU</label>
+                            <input type="text" name="sku" class="form-control form-control-sm"
+                                   th:value="${filtroSku}" placeholder="Prefixo do SKU">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Área</label>
+                            <select name="areaId" class="form-select form-select-sm">
+                                <option value="">Todas</option>
+                                <option th:each="a : ${areas}"
+                                        th:value="${a.id}"
+                                        th:text="${a.nome}"
+                                        th:selected="${filtroAreaId != null and filtroAreaId == a.id}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Estoque</label>
+                            <select name="emAlerta" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                <option value="true" th:selected="${filtroEmAlerta != null and filtroEmAlerta}">Em alerta</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex gap-2">
+                            <button class="btn btn-sm btn-primary flex-grow-1">
+                                <i class="bi bi-funnel"></i> Filtrar
+                            </button>
+                            <a href="/materiais" class="btn btn-sm btn-outline-secondary" title="Limpar filtros">
+                                <i class="bi bi-x-lg"></i>
+                            </a>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -34,7 +77,13 @@
                 <div class="table-card-head">
                     <div>
                         <h5 class="mb-0">Lista de materiais</h5>
-                        <small class="text-muted"><span th:text="${#lists.size(materiais)}"></span> registro(s)</small>
+                        <small class="text-muted">
+                            <span th:text="${page.totalElements}"></span> registro(s)
+                            <span th:if="${page.totalPages > 1}">
+                                — página <span th:text="${page.number + 1}"></span>
+                                de <span th:text="${page.totalPages}"></span>
+                            </span>
+                        </small>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -52,7 +101,7 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr th:each="m : ${materiais}">
+                        <tr th:each="m : ${page.content}">
                             <td><code th:text="${m.codigoSku} ?: '—'"></code></td>
                             <td class="fw-semibold" th:text="${m.nome}"></td>
                             <td>
@@ -68,10 +117,10 @@
                                 th:text="${m.estoqueAtual}"></td>
                             <td class="text-end text-muted" th:text="${m.estoqueMinimo}"></td>
                             <td>
-                                <span th:if="${m.estoqueAbaixoDoMinimo}"
-                                      class="status-pill text-danger" style="background:#fee2e2;">Repor</span>
-                                <span th:unless="${m.estoqueAbaixoDoMinimo}"
-                                      class="status-pill text-success" style="background:#d1fae5;">OK</span>
+                                <th:block th:if="${m.estoqueAbaixoDoMinimo}"><span
+                                        th:replace="~{fragments/status :: pill('Repor')}"></span></th:block>
+                                <th:block th:unless="${m.estoqueAbaixoDoMinimo}"><span
+                                        th:replace="~{fragments/status :: pill('OK')}"></span></th:block>
                             </td>
                             <td class="text-end">
                                 <a th:href="@{|/materiais/${m.id}/etiqueta|}"
@@ -84,15 +133,17 @@
                                 </a>
                             </td>
                         </tr>
-                        <tr th:if="${#lists.isEmpty(materiais)}">
+                        <tr th:if="${page.empty}">
                             <td colspan="8" class="empty-state">
                                 <i class="bi bi-inbox d-block mb-2"></i>
-                                Nenhum material cadastrado.
+                                Nenhum material encontrado com os filtros atuais.
                             </td>
                         </tr>
                         </tbody>
                     </table>
                 </div>
+
+                <div th:replace="~{fragments/pagination :: paginacao(${page}, '/materiais')}"></div>
             </div>
 
         </div>

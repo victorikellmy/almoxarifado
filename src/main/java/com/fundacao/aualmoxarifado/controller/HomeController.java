@@ -21,38 +21,29 @@ public class HomeController {
 
     /**
      * Dashboard inicial — agrega contagens leves para os cartões de estatísticas
-     * exibidos em {@code index.html}. As consultas são todas O(1) (count + filter
-     * por status) e cabem perfeitamente em uma página de visão geral.
+     * exibidos em {@code index.html}. Todas as contagens descem como COUNT(*)
+     * para o banco; a única lista materializada é a de alertas (RN06), que é
+     * exibida na íntegra e já vem com subcategoria/área carregadas.
      */
     @GetMapping("/")
     public String home(Model model) {
-        long totalMateriais = materialRepository.count();
-        long materiaisEmAlerta = materialRepository.findEmAlertaDeEstoque().size(); // RN06
-        long totalAreas = areaRepository.count();
-        long totalSubcategorias = subcategoriaRepository.count();
-        long totalSetores = setorRepository.count();
+        // Lista usada duas vezes (contador + tabela de contexto) — busca única.
+        var alertas = materialRepository.findEmAlertaDeEstoque(); // RN06
 
-        long comprasAguardando = compraRepository
-                .findByStatusOrderByDataSolicitacaoAsc(StatusCompra.AGUARDANDO_COMPRA).size();
-        long totalCompras = compraRepository.count();
-
-        long totalMovimentacoes = movimentacaoRepository.count();
-        long pendentesAprovacao = movimentacaoRepository.findAll().stream()
-                .filter(m -> m.getStatus() == StatusMovimentacao.PENDENTE_APROVACAO)
-                .count();
-
-        model.addAttribute("totalMateriais", totalMateriais);
-        model.addAttribute("materiaisEmAlerta", materiaisEmAlerta);
-        model.addAttribute("totalAreas", totalAreas);
-        model.addAttribute("totalSubcategorias", totalSubcategorias);
-        model.addAttribute("totalSetores", totalSetores);
-        model.addAttribute("comprasAguardando", comprasAguardando);
-        model.addAttribute("totalCompras", totalCompras);
-        model.addAttribute("totalMovimentacoes", totalMovimentacoes);
-        model.addAttribute("pendentesAprovacao", pendentesAprovacao);
+        model.addAttribute("totalMateriais", materialRepository.count());
+        model.addAttribute("materiaisEmAlerta", (long) alertas.size());
+        model.addAttribute("totalAreas", areaRepository.count());
+        model.addAttribute("totalSubcategorias", subcategoriaRepository.count());
+        model.addAttribute("totalSetores", setorRepository.count());
+        model.addAttribute("comprasAguardando",
+                compraRepository.countByStatus(StatusCompra.AGUARDANDO_COMPRA));
+        model.addAttribute("totalCompras", compraRepository.count());
+        model.addAttribute("totalMovimentacoes", movimentacaoRepository.count());
+        model.addAttribute("pendentesAprovacao",
+                movimentacaoRepository.countByStatus(StatusMovimentacao.PENDENTE_APROVACAO));
 
         // Bloco de últimos cadastros / alertas para a UI mostrar contexto.
-        model.addAttribute("alertas", materialRepository.findEmAlertaDeEstoque());
+        model.addAttribute("alertas", alertas);
 
         return "index";
     }

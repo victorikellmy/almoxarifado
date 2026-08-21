@@ -277,14 +277,13 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void registrarEntrada(Material mat, int qtd, String fornecedor, String nf, int diasAtras) {
-        Movimentacao mov = Movimentacao.builder()
-                .material(mat)
-                .quantidade(qtd)
-                .fornecedor(fornecedor)
-                .notaFiscal(nf)
-                .data(LocalDateTime.now().plusDays(diasAtras))
-                .build();
-        movimentacaoService.registrarEntrada(mov);
+        Movimentacao mov = movimentacaoService.registrarEntrada(
+                fornecedor, nf, null,
+                java.util.List.of(new com.fundacao.aualmoxarifado.service.MovimentacaoService.LinhaItem(
+                        mat.getId(), qtd)));
+        // Reescreve a data para simular histórico no passado (não há setter via service).
+        mov.setData(LocalDateTime.now().plusDays(diasAtras));
+        movimentacaoRepository.save(mov);
     }
 
     // ========================================================
@@ -331,14 +330,13 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void gerarSaida(Material mat, int qtd, Setor setor, String quemRetirou, int diasAtras) {
-        Movimentacao mov = Movimentacao.builder()
-                .material(mat)
-                .quantidade(qtd)
-                .setorDestino(setor)
-                .retiradoPor(quemRetirou)
-                .data(LocalDateTime.now().plusDays(diasAtras))
-                .build();
-        Movimentacao salva = movimentacaoService.registrarSaida(mov);
-        movimentacaoService.alterarStatus(salva.getId(), StatusMovimentacao.ENTREGUE);
+        Movimentacao mov = movimentacaoService.registrarSaida(
+                setor, quemRetirou, null,
+                java.util.List.of(new com.fundacao.aualmoxarifado.service.MovimentacaoService.LinhaItem(
+                        mat.getId(), qtd)));
+        // Histórico simulado no passado.
+        mov.setData(LocalDateTime.now().plusDays(diasAtras));
+        movimentacaoRepository.save(mov);
+        movimentacaoService.alterarStatus(mov.getId(), StatusMovimentacao.ENTREGUE);
     }
 }

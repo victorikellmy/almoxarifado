@@ -6,6 +6,10 @@ import com.fundacao.aualmoxarifado.repository.MaterialRepository;
 import com.fundacao.aualmoxarifado.repository.SetorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -31,6 +35,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class CompraService {
 
     private final CompraRepository compraRepository;
@@ -191,32 +196,26 @@ public class CompraService {
     }
 
     /**
-     * RN09 - Para Compra ESTOQUE: cada item gera uma ENTRADA no
-     * MovimentacaoService, que por sua vez incrementa {@code Material.estoqueAtual}.
+     * RN09 - Para Compra ESTOQUE: agrupa todos os itens em UMA ENTRADA multi-item
+     * (uma NF, vários materiais) e delega ao MovimentacaoService, que credita o
+     * saldo de cada material na mesma transação.
      */
     private void baixarComoEntradaDeEstoque(Compra compra) {
-        for (ItemCompra item : compra.getItens()) {
-            Movimentacao entrada = Movimentacao.builder()
-                    .material(item.getMaterial())
-                    .quantidade(item.getQuantidade())
-                    .fornecedor(compra.getFornecedor())
-                    .notaFiscal(compra.getNumeroNotaFiscal())
-                    .data(LocalDateTime.now())
-                    .build();
-            movimentacaoService.registrarEntrada(entrada);
-        }
+        movimentacaoService.registrarEntrada(
+                compra.getFornecedor(),
+                compra.getNumeroNotaFiscal(),
+                "Entrada da Compra #" + compra.getId(),
+                linhasDe(compra));
     }
 
     /**
      * RN10 - Para Compra DIRETA: a mercadoria foi adquirida sob demanda
      * específica para o setor solicitante e entregue diretamente.
      *
-     * O material NÃO passa pelo estoque geral do almoxarifado: nenhum saldo é
-     * incrementado nem decrementado. Apenas registramos uma movimentação do
-     * tipo {@link TipoMovimentacao#COMPRA_DIRETA} para cada item, contendo a
-     * referência ao setor de destino, ao fornecedor e à NF — assim o histórico
-     * mostra "o que compramos e enviamos para os setores" e o Relatório de
-     * Consumo por Setor (RF10) consegue contabilizar o consumo.
+     * <p>O material NÃO passa pelo estoque geral. Agrupamos todos os itens da
+     * compra em UMA movimentação multi-item do tipo {@link TipoMovimentacao#COMPRA_DIRETA}
+     * com o setor de destino — assim o Relatório de Consumo por Setor (RF10)
+     * consegue contabilizar o consumo somando os itens.</p>
      */
     private void baixarComoRepasseDireto(Compra compra) {
         Setor setorDestino = compra.getSetorSolicitante();
@@ -227,18 +226,24 @@ public class CompraService {
                     "RN10: compra direta sem setor solicitante — impossível repassar.");
         }
 
-        for (ItemCompra item : compra.getItens()) {
-            Movimentacao mov = Movimentacao.builder()
-                    .material(item.getMaterial())
-                    .quantidade(item.getQuantidade())
-                    .setorDestino(setorDestino)
-                    .fornecedor(compra.getFornecedor())
-                    .notaFiscal(compra.getNumeroNotaFiscal())
-                    .retiradoPor("Compra Direta #" + compra.getId())
-                    .data(LocalDateTime.now())
-                    .build();
-            movimentacaoService.registrarCompraDireta(mov);
-        }
+        movimentacaoService.registrarCompraDireta(
+                setorDestino,
+                "Compra Direta #" + compra.getId(),
+                compra.getFornecedor(),
+                compra.getNumeroNotaFiscal(),
+                "Repasse direto da Compra #" + compra.getId(),
+                linhasDe(compra));
+    }
+
+    /**
+     * Mapeia os itens da compra para as linhas do MovimentacaoService.
+     * (getId() no proxy lazy de Material não inicializa a entidade.)
+     */
+    private static List<MovimentacaoService.LinhaItem> linhasDe(Compra compra) {
+        return compra.getItens().stream()
+                .map(it -> new MovimentacaoService.LinhaItem(
+                        it.getMaterial().getId(), it.getQuantidade()))
+                .toList();
     }
 
     // =====================================================================
@@ -274,14 +279,24 @@ public class CompraService {
     // LEITURAS
     // =====================================================================
 
-    /** RF15 - usada pela tela "Aguardando Compra". */
-    public List<Compra> listarAguardandoCompra() {
-        return compraRepository.findByStatusOrderByDataSolicitacaoAsc(StatusCompra.AGUARDANDO_COMPRA);
+    /** RF15 - usada pela tela "Aguardando Compra" (FIFO: dataSolicitacao asc). */
+    public Page<Compra> listarAguardandoCompra(Pageable pageable) {
+        return compraRepository.findByStatus(StatusCompra.AGUARDANDO_COMPRA,
+                comOrdenacaoPadrao(pageable, Sort.by(Sort.Direction.ASC, "dataSolicitacao")));
     }
 
     /** Lista geral (todas as compras, mais novas primeiro). */
-    public List<Compra> listarTodas() {
-        return compraRepository.findAllByOrderByDataSolicitacaoDesc();
+    public Page<Compra> listarTodas(Pageable pageable) {
+        return compraRepository.findAll(
+                comOrdenacaoPadrao(pageable, Sort.by(Sort.Direction.DESC, "dataSolicitacao")));
+    }
+
+    /** Garante a ordenação padrão quando o chamador não pede nenhuma. */
+    private static Pageable comOrdenacaoPadrao(Pageable pageable, Sort padrao) {
+        if (pageable.getSort().isSorted()) {
+            return pageable;
+        }
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), padrao);
     }
 
     public Compra buscarPorId(Long id) {

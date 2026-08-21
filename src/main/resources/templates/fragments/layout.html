@@ -2,447 +2,260 @@
 <html lang="pt-br" xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <!--
-  Fragments compartilhados de layout (Thymeleaf).
-  Uso típico em uma página:
+  Fragments compartilhados de layout (Thymeleaf) — visual unificado com o
+  Gerenciador Patrimonial (Claude Design / Sidebar Edition).
 
-    <head th:replace="~{fragments/layout :: head('Materiais')}"></head>
-    <body>
-      <div class="app-shell">
-        <aside th:replace="~{fragments/layout :: sidebar('materiais')}"></aside>
-        <main class="app-main">
-          <header th:replace="~{fragments/layout :: topbar('Materiais', 'Catálogo do almoxarifado')}"></header>
-          <div class="app-content"> ... </div>
-        </main>
-      </div>
-      <th:block th:replace="~{fragments/layout :: scripts}"></th:block>
-    </body>
-
-  O fragmento sidebar(active) recebe a chave da página atual (ex.: 'materiais',
-  'compras') e marca o item correspondente como ativo.
+  API mantida para compatibilidade com as páginas atuais:
+    <head th:replace="~{fragments/layout :: head('Titulo')}"></head>
+    <aside th:replace="~{fragments/layout :: sidebar('chave')}"></aside>
+    <header th:replace="~{fragments/layout :: topbar('Titulo', 'Subtitulo')}"></header>
+    <th:block th:replace="~{fragments/layout :: scripts}"></th:block>
 -->
 
-<!-- ===== HEAD ===== -->
+<!-- ============================ HEAD ============================ -->
 <head th:fragment="head(titulo)">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title th:text="${titulo} + ' · Almoxarifado'">Almoxarifado</title>
 
-    <!-- Bootstrap 5 (mantém os componentes que já usamos) -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons (https://icons.getbootstrap.com) -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-    <!-- Inter — fonte tipográfica corporativa -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Favicon institucional -->
+    <link rel="icon" type="image/png" th:href="@{/images/favicon-48.png}"/>
+    <link rel="apple-touch-icon" th:href="@{/images/apple-touch-icon.png}"/>
 
-    <style>
-        /* =====================================================================
-           Design tokens — paleta de cores, espaçamento e raios.
-           Centralizar aqui evita "mágica" espalhada nos templates.
-           ===================================================================== */
-        :root {
-            --brand: #4f46e5;            /* indigo-600 */
-            --brand-hover: #4338ca;
-            --brand-light: #eef2ff;
-            --bg-app: #f5f7fb;
-            --bg-card: #ffffff;
-            --bg-sidebar: #0f172a;       /* slate-900 */
-            --bg-sidebar-hover: #1e293b;
-            --bg-sidebar-active: #4f46e5;
-            --text-primary: #0f172a;
-            --text-muted: #64748b;
-            --text-sidebar: #cbd5e1;
-            --text-sidebar-muted: #64748b;
-            --border: #e5e7eb;
-            --border-strong: #cbd5e1;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --info: #0ea5e9;
-            --shadow-sm: 0 1px 2px rgba(15,23,42,.05);
-            --shadow-md: 0 4px 12px rgba(15,23,42,.06);
-            --radius: 10px;
-            --sidebar-w: 248px;
-        }
+    <!-- Google Fonts: Inter + JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap"
+          rel="stylesheet"/>
 
-        * { -webkit-font-smoothing: antialiased; }
-        html, body { height: 100%; }
-        body {
-            font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-            background: var(--bg-app);
-            color: var(--text-primary);
-            font-size: 14px;
-        }
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          rel="stylesheet" crossorigin="anonymous"/>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
+          rel="stylesheet"/>
 
-        h1, h2, h3, h4, h5, h6 { font-weight: 600; letter-spacing: -.01em; }
+    <!-- CSS custom (Claude Design — compartilhado com o Patrimônio) -->
+    <link rel="stylesheet" th:href="@{/css/app.css}"/>
 
-        /* =====================================================================
-           Shell de duas colunas: sidebar fixo à esquerda + área principal
-           ===================================================================== */
-        .app-shell { display: flex; min-height: 100vh; }
-        .app-main {
-            flex: 1;
-            margin-left: var(--sidebar-w);
-            display: flex;
-            flex-direction: column;
-            min-width: 0;       /* permite que tabelas largas façam scroll */
-        }
-        .app-content { padding: 1.75rem 2rem 2.5rem; }
+    <!-- Aplica o tema antes do render para evitar flash -->
+    <script>
+        (function () {
+            var stored = localStorage.getItem('alm-theme');
+            var prefers = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            var theme = stored || prefers;
+            document.documentElement.setAttribute('data-theme', theme);
+            // Bootstrap 5.3 usa data-bs-theme para alternar suas próprias
+            // variáveis (cor de texto dos cards, tabelas etc.). Sem isso
+            // os valores dentro de .card ficavam pretos sobre fundo escuro.
+            document.documentElement.setAttribute('data-bs-theme', theme);
 
-        /* =====================================================================
-           Sidebar
-           ===================================================================== */
-        .app-sidebar {
-            width: var(--sidebar-w);
-            background: var(--bg-sidebar);
-            color: var(--text-sidebar);
-            position: fixed;
-            top: 0; left: 0; bottom: 0;
-            display: flex;
-            flex-direction: column;
-            padding: 1.25rem 0;
-            z-index: 1000;
-        }
-        .sidebar-brand {
-            display: flex;
-            align-items: center;
-            gap: .65rem;
-            padding: 0 1.25rem 1.25rem;
-            border-bottom: 1px solid rgba(255,255,255,.06);
-            color: #fff;
-            text-decoration: none;
-        }
-        .sidebar-brand-logo {
-            width: 36px; height: 36px;
-            border-radius: 8px;
-            background: linear-gradient(135deg, #6366f1, #8b5cf6);
-            display: grid; place-items: center;
-            color: #fff;
-            font-weight: 700;
-            font-size: 1.05rem;
-        }
-        .sidebar-brand-text { font-weight: 600; font-size: 1rem; line-height: 1.1; }
-        .sidebar-brand-text small { display: block; color: var(--text-sidebar-muted); font-weight: 400; font-size: .72rem; }
+            var sidebar = localStorage.getItem('alm-sidebar');
+            if (sidebar === 'collapsed') {
+                document.documentElement.classList.add('sidebar-collapsed');
+            }
+        })();
+    </script>
 
-        .sidebar-section-title {
-            padding: 1rem 1.25rem .35rem;
-            font-size: .68rem;
-            text-transform: uppercase;
-            letter-spacing: .08em;
-            color: var(--text-sidebar-muted);
-            font-weight: 600;
-        }
-        .sidebar-nav { list-style: none; padding: 0; margin: 0; }
-        .sidebar-nav a {
-            display: flex;
-            align-items: center;
-            gap: .75rem;
-            padding: .55rem 1.25rem;
-            color: var(--text-sidebar);
-            text-decoration: none;
-            font-size: .875rem;
-            font-weight: 500;
-            border-left: 3px solid transparent;
-            transition: background .12s, color .12s, border-color .12s;
-        }
-        .sidebar-nav a i { font-size: 1rem; opacity: .9; width: 1.1em; }
-        .sidebar-nav a:hover { background: var(--bg-sidebar-hover); color: #fff; }
-        .sidebar-nav a.active {
-            color: #fff;
-            background: rgba(79,70,229,.12);
-            border-left-color: var(--brand);
-        }
-        .sidebar-foot {
-            margin-top: auto;
-            padding: 1rem 1.25rem;
-            border-top: 1px solid rgba(255,255,255,.06);
-            font-size: .75rem;
-            color: var(--text-sidebar-muted);
-        }
-
-        /* =====================================================================
-           Topbar (cabeçalho de cada página)
-           ===================================================================== */
-        .app-topbar {
-            background: #fff;
-            border-bottom: 1px solid var(--border);
-            padding: 1rem 2rem;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 1rem;
-        }
-        .app-topbar h1 { font-size: 1.15rem; margin: 0; font-weight: 600; }
-        .app-topbar .topbar-subtitle { color: var(--text-muted); font-size: .825rem; margin: 0; }
-
-        /* =====================================================================
-           Cards / superfícies
-           ===================================================================== */
-        .card {
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-sm);
-            background: var(--bg-card);
-        }
-        .card-pad { padding: 1.5rem; }
-
-        /* Stat card do dashboard */
-        .stat-card {
-            display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-            padding: 1.25rem;
-        }
-        .stat-card .stat-icon {
-            width: 44px; height: 44px;
-            border-radius: 10px;
-            display: grid; place-items: center;
-            font-size: 1.25rem;
-            flex-shrink: 0;
-        }
-        .stat-card .stat-icon.bg-brand { background: var(--brand-light); color: var(--brand); }
-        .stat-card .stat-icon.bg-warning-soft { background: #fef3c7; color: #b45309; }
-        .stat-card .stat-icon.bg-success-soft { background: #d1fae5; color: #047857; }
-        .stat-card .stat-icon.bg-info-soft { background: #e0f2fe; color: #0369a1; }
-        .stat-card .stat-icon.bg-danger-soft { background: #fee2e2; color: #b91c1c; }
-        .stat-card .stat-label { color: var(--text-muted); font-size: .8rem; margin: 0; }
-        .stat-card .stat-value { font-size: 1.6rem; font-weight: 700; line-height: 1.1; margin: .15rem 0 0; }
-        .stat-card .stat-hint { color: var(--text-muted); font-size: .75rem; margin: .25rem 0 0; }
-
-        /* =====================================================================
-           Tabelas
-           ===================================================================== */
-        .table-card { padding: 0; overflow: hidden; }
-        .table-card > .table-card-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 1.25rem;
-            border-bottom: 1px solid var(--border);
-            gap: 1rem;
-        }
-        .table-card > .table-responsive { margin: 0; }
-        .table {
-            margin: 0;
-            font-size: .875rem;
-        }
-        .table > thead th {
-            background: #f8fafc;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            font-size: .68rem;
-            font-weight: 600;
-            letter-spacing: .05em;
-            border-bottom: 1px solid var(--border);
-            padding: .65rem 1rem;
-        }
-        .table > tbody > tr > td {
-            padding: .85rem 1rem;
-            border-color: var(--border);
-            vertical-align: middle;
-        }
-        .table > tbody > tr:hover { background: #f9fafb; }
-        .table.table-striped > tbody > tr:nth-of-type(odd) > * { background: transparent; } /* desativa zebra */
-
-        /* =====================================================================
-           Forms
-           ===================================================================== */
-        .form-label { font-size: .8rem; font-weight: 600; color: var(--text-primary); margin-bottom: .35rem; }
-        .form-control, .form-select {
-            border-radius: 8px;
-            border-color: var(--border);
-            font-size: .875rem;
-            padding: .5rem .75rem;
-        }
-        .form-control:focus, .form-select:focus {
-            border-color: var(--brand);
-            box-shadow: 0 0 0 3px rgba(79,70,229,.15);
-        }
-        .form-text { font-size: .75rem; color: var(--text-muted); }
-
-        /* =====================================================================
-           Botões
-           ===================================================================== */
-        .btn { font-weight: 500; border-radius: 8px; padding: .5rem 1rem; font-size: .875rem; }
-        .btn-sm { padding: .3rem .65rem; font-size: .78rem; }
-        .btn-primary { background: var(--brand); border-color: var(--brand); }
-        .btn-primary:hover, .btn-primary:focus { background: var(--brand-hover); border-color: var(--brand-hover); }
-        .btn-success { background: var(--success); border-color: var(--success); }
-        .btn-success:hover { background: #059669; border-color: #059669; }
-        .btn-warning { background: var(--warning); border-color: var(--warning); color: #fff; }
-        .btn-warning:hover { background: #d97706; border-color: #d97706; color: #fff; }
-        .btn-danger { background: var(--danger); border-color: var(--danger); }
-
-        /* =====================================================================
-           Badges
-           ===================================================================== */
-        .badge {
-            font-weight: 500;
-            font-size: .72rem;
-            padding: .35em .65em;
-            border-radius: 6px;
-        }
-        .badge.bg-success { background: #d1fae5 !important; color: #047857 !important; }
-        .badge.bg-danger { background: #fee2e2 !important; color: #b91c1c !important; }
-        .badge.bg-warning { background: #fef3c7 !important; color: #b45309 !important; }
-        .badge.bg-info { background: #e0f2fe !important; color: #0369a1 !important; }
-        .badge.bg-secondary { background: #f1f5f9 !important; color: #475569 !important; }
-        .badge.bg-primary { background: var(--brand-light) !important; color: var(--brand) !important; }
-
-        /* Status pill com bolinha */
-        .status-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: .35rem;
-            font-weight: 500;
-            font-size: .75rem;
-            padding: .25rem .6rem;
-            border-radius: 999px;
-        }
-        .status-pill::before {
-            content: '';
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            background: currentColor;
-        }
-
-        /* =====================================================================
-           Alertas
-           ===================================================================== */
-        .alert {
-            border: 1px solid transparent;
-            border-radius: var(--radius);
-            font-size: .875rem;
-        }
-        .alert-warning { background: #fffbeb; border-color: #fde68a; color: #92400e; }
-        .alert-danger { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
-        .alert-success { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
-
-        /* =====================================================================
-           Page header (título + ações)
-           ===================================================================== */
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 1rem;
-            margin-bottom: 1.25rem;
-        }
-        .page-header h2 { font-size: 1.45rem; margin: 0; }
-        .page-header .page-subtitle { color: var(--text-muted); font-size: .875rem; margin: .25rem 0 0; }
-
-        /* Esconde sidebar em telas pequenas (sem implementar mobile drawer agora). */
-        @media (max-width: 768px) {
-            .app-sidebar { transform: translateX(-100%); transition: transform .2s; }
-            .app-main { margin-left: 0; }
-            .app-content { padding: 1rem; }
-            .app-topbar { padding: 1rem; }
-        }
-
-        /* Empty state das tabelas */
-        .empty-state {
-            text-align: center;
-            color: var(--text-muted);
-            padding: 2rem 1rem;
-        }
-        .empty-state i { font-size: 1.6rem; opacity: .55; }
-
-        code { color: var(--text-primary); background: #f1f5f9; padding: .12em .45em; border-radius: 4px; font-size: .82em; }
-    </style>
 </head>
 
-<!-- ===== SIDEBAR ===== -->
-<aside th:fragment="sidebar(ativo)" class="app-sidebar">
-    <a class="sidebar-brand" href="/">
-        <span class="sidebar-brand-logo">A</span>
-        <span class="sidebar-brand-text">
-            Almoxarifado
-            <small>Fundação · 2025</small>
-        </span>
-    </a>
+<!-- ============================ SIDEBAR ============================ -->
+<aside th:fragment="sidebar(ativo)" class="app-sidebar" id="appSidebar" aria-label="Navegação principal">
+    <div class="sidebar-brand">
+        <a class="sidebar-brand-link" th:href="@{/}">
+            <img th:src="@{/images/logo-color-sm.png}" alt="Fundação Pró-Tocantins"
+                 class="sidebar-brand-logo sidebar-brand-logo-light" loading="lazy"/>
+            <img th:src="@{/images/logo-white-sm.png}" alt="Fundação Pró-Tocantins"
+                 class="sidebar-brand-logo sidebar-brand-logo-dark" loading="lazy"/>
+            <span class="sidebar-brand-mark-collapsed" aria-hidden="true">
+                <i class="bi bi-box-seam"></i>
+            </span>
+            <span class="sidebar-brand-text">
+                <span class="sidebar-brand-title">Almoxarifado</span>
+            </span>
+        </a>
+        <button type="button" class="sidebar-collapse-btn d-none d-lg-inline-flex"
+                id="sidebarCollapseBtn"
+                title="Recolher menu" aria-label="Recolher menu">
+            <i class="bi bi-chevron-double-left"></i>
+        </button>
+    </div>
 
-    <div class="sidebar-section-title">Visão geral</div>
-    <ul class="sidebar-nav">
-        <li><a href="/" th:classappend="${ativo == 'home'} ? 'active'">
-            <i class="bi bi-grid-1x2"></i> Dashboard</a></li>
-    </ul>
+    <nav class="sidebar-nav">
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Visão geral</div>
+            <a class="sidebar-link" th:classappend="${ativo == 'home'} ? 'active'" th:href="@{/}">
+                <i class="bi bi-speedometer2"></i>
+                <span class="sidebar-link-label">Dashboard</span>
+            </a>
+        </div>
 
-    <div class="sidebar-section-title">Catálogo</div>
-    <ul class="sidebar-nav">
-        <li><a href="/areas" th:classappend="${ativo == 'areas'} ? 'active'">
-            <i class="bi bi-diagram-3"></i> Áreas</a></li>
-        <li><a href="/subcategorias" th:classappend="${ativo == 'subcategorias'} ? 'active'">
-            <i class="bi bi-tags"></i> Subcategorias</a></li>
-        <li><a href="/materiais" th:classappend="${ativo == 'materiais'} ? 'active'">
-            <i class="bi bi-box-seam"></i> Materiais</a></li>
-        <li><a href="/materiais/importar" th:classappend="${ativo == 'materiais-importar'} ? 'active'">
-            <i class="bi bi-file-earmark-spreadsheet"></i> Importar planilha</a></li>
-        <li><a href="/setores" th:classappend="${ativo == 'setores'} ? 'active'">
-            <i class="bi bi-building"></i> Setores</a></li>
-    </ul>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Catálogo</div>
+            <a class="sidebar-link" th:classappend="${ativo == 'areas'} ? 'active'" th:href="@{/areas}">
+                <i class="bi bi-diagram-3"></i>
+                <span class="sidebar-link-label">Áreas</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'subcategorias'} ? 'active'" th:href="@{/subcategorias}">
+                <i class="bi bi-tags"></i>
+                <span class="sidebar-link-label">Subcategorias</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'materiais'} ? 'active'" th:href="@{/materiais}">
+                <i class="bi bi-box-seam"></i>
+                <span class="sidebar-link-label">Materiais</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'materiais-importar'} ? 'active'"
+               th:href="@{/materiais/importar}">
+                <i class="bi bi-file-earmark-spreadsheet"></i>
+                <span class="sidebar-link-label">Importar planilha</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'setores'} ? 'active'" th:href="@{/setores}">
+                <i class="bi bi-building"></i>
+                <span class="sidebar-link-label">Setores</span>
+            </a>
+        </div>
 
-    <div class="sidebar-section-title">Operações</div>
-    <ul class="sidebar-nav">
-        <li><a href="/compras" th:classappend="${ativo == 'compras'} ? 'active'">
-            <i class="bi bi-cart3"></i> Compras</a></li>
-        <li><a href="/compras/aguardando" th:classappend="${ativo == 'compras-fila'} ? 'active'">
-            <i class="bi bi-hourglass-split"></i> Fila de compras</a></li>
-        <li><a href="/movimentacoes" th:classappend="${ativo == 'movimentacoes'} ? 'active'">
-            <i class="bi bi-arrow-left-right"></i> Movimentações</a></li>
-        <li><a href="/movimentacoes/saida/nova" th:classappend="${ativo == 'saida-nova'} ? 'active'">
-            <i class="bi bi-box-arrow-up"></i> Nova saída</a></li>
-    </ul>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Operações</div>
+            <a class="sidebar-link" th:classappend="${ativo == 'compras'} ? 'active'" th:href="@{/compras}">
+                <i class="bi bi-cart3"></i>
+                <span class="sidebar-link-label">Compras</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'compras-fila'} ? 'active'" th:href="@{/compras/aguardando}">
+                <i class="bi bi-hourglass-split"></i>
+                <span class="sidebar-link-label">Fila de compras</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'movimentacoes'} ? 'active'" th:href="@{/movimentacoes}">
+                <i class="bi bi-arrow-left-right"></i>
+                <span class="sidebar-link-label">Movimentações</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'saida-nova'} ? 'active'" th:href="@{/movimentacoes/saida/nova}">
+                <i class="bi bi-box-arrow-up"></i>
+                <span class="sidebar-link-label">Nova saída</span>
+            </a>
+            <a class="sidebar-link"
+               sec:authorize="hasRole('ADMIN')"
+               th:classappend="${ativo == 'auditoria'} ? 'active'" th:href="@{/auditoria}">
+                <i class="bi bi-shield-check"></i>
+                <span class="sidebar-link-label">Auditoria</span>
+            </a>
+        </div>
 
-    <div class="sidebar-section-title">Relatórios</div>
-    <ul class="sidebar-nav">
-        <li><a href="/movimentacoes/relatorio/consumo-setor"
-               th:classappend="${ativo == 'rel-consumo'} ? 'active'">
-            <i class="bi bi-bar-chart"></i> Consumo por setor</a></li>
-    </ul>
+        <div class="sidebar-section">
+            <div class="sidebar-section-title">Relatórios</div>
+            <a class="sidebar-link" th:classappend="${ativo == 'rel-consumo'} ? 'active'"
+               th:href="@{/movimentacoes/relatorio/consumo-setor}">
+                <i class="bi bi-bar-chart"></i>
+                <span class="sidebar-link-label">Consumo por setor</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'rel-mensal'} ? 'active'"
+               th:href="@{/relatorios/mensal}">
+                <i class="bi bi-calendar3"></i>
+                <span class="sidebar-link-label">Relatório mensal</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'rel-trimestral'} ? 'active'"
+               th:href="@{/relatorios/trimestral}">
+                <i class="bi bi-calendar2-range"></i>
+                <span class="sidebar-link-label">Relatório trimestral</span>
+            </a>
+            <a class="sidebar-link" th:classappend="${ativo == 'rel-anual'} ? 'active'"
+               th:href="@{/relatorios/anual}">
+                <i class="bi bi-journal-bookmark"></i>
+                <span class="sidebar-link-label">Relatório anual</span>
+            </a>
+        </div>
 
-    <th:block sec:authorize="hasRole('ADMIN')">
-        <div class="sidebar-section-title">Administração</div>
-        <ul class="sidebar-nav">
-            <li><a href="/usuarios" th:classappend="${ativo == 'usuarios'} ? 'active'">
-                <i class="bi bi-people"></i> Usuários</a></li>
-        </ul>
-    </th:block>
+        <div class="sidebar-section" sec:authorize="hasRole('ADMIN')">
+            <div class="sidebar-section-title">Administração</div>
+            <a class="sidebar-link" th:classappend="${ativo == 'usuarios'} ? 'active'" th:href="@{/usuarios}">
+                <i class="bi bi-people"></i>
+                <span class="sidebar-link-label">Usuários</span>
+            </a>
+        </div>
+    </nav>
 
-    <div class="sidebar-foot d-flex align-items-center justify-content-between gap-2">
-        <span class="text-truncate">
-            <i class="bi bi-person-circle me-1"></i>
-            <span sec:authentication="name">usuário</span>
-        </span>
-        <form th:action="@{/logout}" method="post" class="d-inline mb-0">
-            <button type="submit" class="btn btn-sm btn-outline-light border-0 p-1"
-                    title="Sair do sistema" style="color: var(--text-sidebar-muted);">
-                <i class="bi bi-box-arrow-right"></i>
-            </button>
-        </form>
+    <div class="sidebar-footer">
+        <div class="sidebar-user">
+            <span class="nav-avatar"><i class="bi bi-person"></i></span>
+            <div class="sidebar-user-info">
+                <span class="sidebar-user-name" sec:authentication="name">usuário</span>
+                <a class="sidebar-user-role" th:href="@{/minha-conta/senha}">Alterar senha</a>
+            </div>
+            <form th:action="@{/logout}" method="post" class="mb-0 ms-auto">
+                <button type="submit" class="sidebar-logout-btn"
+                        title="Sair do sistema" aria-label="Sair do sistema">
+                    <i class="bi bi-box-arrow-right"></i>
+                </button>
+            </form>
+        </div>
     </div>
 </aside>
 
-<!-- ===== TOPBAR ===== -->
+<!-- ============================ TOPBAR ============================ -->
 <header th:fragment="topbar(titulo, subtitulo)" class="app-topbar">
-    <div>
+    <button type="button" class="topbar-icon-btn d-lg-none" id="sidebarOpenBtn"
+            aria-label="Abrir menu" title="Abrir menu">
+        <i class="bi bi-list"></i>
+    </button>
+    <button type="button" class="topbar-icon-btn d-none d-lg-inline-flex" id="sidebarToggleBtn"
+            aria-label="Alternar menu" title="Alternar menu">
+        <i class="bi bi-layout-sidebar"></i>
+    </button>
+
+    <div class="topbar-page-title">
         <h1 th:text="${titulo}">Página</h1>
-        <p class="topbar-subtitle" th:text="${subtitulo}" th:if="${subtitulo}"></p>
+        <p th:if="${subtitulo}" th:text="${subtitulo}"></p>
     </div>
-    <div class="d-flex align-items-center gap-2">
-        <span class="text-muted small d-none d-md-inline">
-            <i class="bi bi-calendar3 me-1"></i>
-            <span th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy')}"></span>
-        </span>
-    </div>
+
+    <div class="topbar-spacer"></div>
+
+    <span class="text-muted small d-none d-md-inline">
+        <i class="bi bi-calendar3 me-1"></i>
+        <span th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy')}"></span>
+    </span>
+
+    <div class="topbar-divider d-none d-md-block"></div>
+
+    <button type="button" class="topbar-icon-btn theme-toggle" id="themeToggleBtn"
+            title="Alternar tema claro/escuro" aria-label="Alternar tema">
+        <i class="bi bi-moon-stars" id="themeIconDark"></i>
+        <i class="bi bi-sun" id="themeIconLight" style="display:none"></i>
+    </button>
 </header>
 
-<!-- ===== SCRIPTS ===== -->
+<!-- ============================ FLASH MESSAGES ============================ -->
+<div th:fragment="messages">
+    <div class="toast-container" th:if="${sucesso != null or erro != null}">
+        <div th:if="${sucesso}" class="toast-modern toast-success" role="alert" data-toast-autohide="4000">
+            <div class="toast-icon"><i class="bi bi-check-lg"></i></div>
+            <div class="toast-body-modern">
+                <div class="toast-title">Sucesso</div>
+                <div class="toast-desc" th:text="${sucesso}">Operação realizada.</div>
+            </div>
+            <button type="button" class="toast-close" aria-label="Fechar">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div th:if="${erro}" class="toast-modern toast-danger" role="alert" data-toast-autohide="6000">
+            <div class="toast-icon"><i class="bi bi-exclamation-triangle"></i></div>
+            <div class="toast-body-modern">
+                <div class="toast-title">Atenção</div>
+                <div class="toast-desc" th:text="${erro}">Erro.</div>
+            </div>
+            <button type="button" class="toast-close" aria-label="Fechar">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================ SCRIPTS ============================ -->
 <th:block th:fragment="scripts">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Backdrop drawer mobile (injetado aqui para não poluir o body das pages) -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" aria-hidden="true"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+            crossorigin="anonymous" defer></script>
+    <script th:src="@{/js/app.js}" defer></script>
 </th:block>
 
 </html>

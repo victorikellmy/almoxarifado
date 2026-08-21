@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Editar subcategoria')}"></head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('subcategorias')}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout :: topbar('Editar subcategoria',
+                              'Apenas nome e descrição podem ser editados — sigla e área são imutáveis (RF18)')}"></header>
+
+        <div class="app-content">
+            <form th:action="@{|/subcategorias/${subcategoria.id}|}" method="post" class="card">
+                <div class="card-pad">
+
+                    <!-- Identificação imutável -->
+                    <h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.05em;">
+                        Identificação <span class="badge bg-secondary ms-2">somente leitura</span>
+                    </h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Área</label>
+                            <input type="text" class="form-control" style="background:#f8fafc;"
+                                   th:value="${subcategoria.area.sigla + ' — ' + subcategoria.area.nome}"
+                                   readonly>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Sigla</label>
+                            <input type="text" class="form-control text-uppercase fw-bold"
+                                   style="background:#f8fafc;"
+                                   th:value="${subcategoria.sigla}" readonly>
+                            <div class="form-text">Compõe o SKU dos materiais.</div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Próximo sequencial</label>
+                            <input type="text" class="form-control"
+                                   style="background:#f8fafc;"
+                                   th:value="${subcategoria.proximoSequencial}" readonly>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Edição -->
+                    <h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.05em;">
+                        Edição
+                    </h6>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Nome *</label>
+                            <input type="text" name="nome" class="form-control"
+                                   th:value="${subcategoria.nome}" required maxlength="100">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Descrição</label>
+                            <input type="text" name="descricao" class="form-control"
+                                   th:value="${subcategoria.descricao}" maxlength="255">
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex gap-2">
+                        <button class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> Salvar alterações
+                        </button>
+                        <a th:href="@{/subcategorias}" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+</div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

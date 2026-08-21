@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Predicate;
@@ -253,12 +254,15 @@ public class ImportacaoMaterialLinhaService {
         return "Saldo definido: " + saldoAtual + " → " + estoquePlanilha + ".";
     }
 
+    /**
+     * Entrada de estoque com um único item — a movimentação passou a ser
+     * cabeçalho + itens, então a linha da planilha vira uma lista de um
+     * elemento. O service continua sendo quem incrementa o saldo (RN05).
+     */
     private void registrarEntrada(Material material, int quantidade) {
-        movimentacaoService.registrarEntrada(Movimentacao.builder()
-                .material(material)
-                .quantidade(quantidade)
-                .fornecedor(ORIGEM_ENTRADA)
-                .build());
+        movimentacaoService.registrarEntrada(
+                ORIGEM_ENTRADA, null, null,
+                List.of(new MovimentacaoService.LinhaItem(material.getId(), quantidade)));
     }
 
     // =====================================================================

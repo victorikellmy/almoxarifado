@@ -62,8 +62,12 @@
                                    title="Editar dados, perfil ou senha">
                                     <i class="bi bi-pencil"></i>
                                 </a>
+                                <!-- A mensagem vai num data-attribute: o Thymeleaf 3.1 recusa
+                                     expressões que devolvem texto dentro de handlers de evento
+                                     (th:onsubmit), por risco de injeção de script. -->
                                 <form th:action="@{|/usuarios/${u.id}/alternar-ativo|}" method="post" class="d-inline"
-                                      th:onsubmit="${u.ativo} ? 'return confirm(\'Desativar o acesso de ' + ${u.nome} + '?\');' : null">
+                                      th:data-confirmar="${u.ativo} ? |Desativar o acesso de ${u.nome}?| : null"
+                                      onsubmit="return !this.dataset.confirmar || confirm(this.dataset.confirmar);">
                                     <button th:if="${u.ativo}" class="btn btn-sm btn-outline-danger" title="Desativar acesso">
                                         <i class="bi bi-person-slash"></i>
                                     </button>

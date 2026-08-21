@@ -10,127 +10,149 @@
 
         <div class="app-content">
 
-            <!-- ============= Cartões de estatísticas ============= -->
-            <div class="row g-3 mb-4">
-                <div class="col-md-6 col-xl-3">
-                    <div class="card stat-card">
-                        <div class="stat-icon bg-brand"><i class="bi bi-box-seam"></i></div>
-                        <div>
-                            <p class="stat-label">Materiais cadastrados</p>
-                            <p class="stat-value" th:text="${totalMateriais}">0</p>
-                            <p class="stat-hint">
-                                <span th:text="${totalAreas}"></span> áreas ·
-                                <span th:text="${totalSubcategorias}"></span> subcategorias
-                            </p>
-                        </div>
+            <!-- ============= Seção: Indicadores ============= -->
+            <section class="mb-4">
+                <div class="d-flex align-items-end justify-content-between mb-3">
+                    <div>
+                        <h5 class="mb-0">Indicadores</h5>
+                        <p class="text-muted small mb-0">Visão consolidada do estoque e das operações.</p>
                     </div>
                 </div>
 
-                <div class="col-md-6 col-xl-3">
-                    <div class="card stat-card">
-                        <div class="stat-icon bg-warning-soft"><i class="bi bi-exclamation-triangle"></i></div>
-                        <div>
-                            <p class="stat-label">Em alerta de estoque</p>
-                            <p class="stat-value" th:text="${materiaisEmAlerta}">0</p>
-                            <p class="stat-hint">
-                                <a href="/materiais" class="text-decoration-none">Ver materiais →</a>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-6 col-xl-3">
-                    <div class="card stat-card">
-                        <div class="stat-icon bg-info-soft"><i class="bi bi-cart3"></i></div>
-                        <div>
-                            <p class="stat-label">Compras aguardando</p>
-                            <p class="stat-value" th:text="${comprasAguardando}">0</p>
-                            <p class="stat-hint">
-                                <span th:text="${totalCompras}"></span> compras no histórico
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-6 col-xl-3">
-                    <div class="card stat-card">
-                        <div class="stat-icon bg-success-soft"><i class="bi bi-arrow-left-right"></i></div>
-                        <div>
-                            <p class="stat-label">Movimentações</p>
-                            <p class="stat-value" th:text="${totalMovimentacoes}">0</p>
-                            <p class="stat-hint">
-                                <span th:text="${pendentesAprovacao}"></span> pendentes de aprovação
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ============= Ações rápidas ============= -->
-            <div class="card mb-4">
-                <div class="card-pad">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <h5 class="mb-0">Ações rápidas</h5>
-                            <p class="text-muted small mb-0">Operações mais frequentes do dia a dia.</p>
-                        </div>
-                    </div>
-
-                    <div class="row g-3">
-                        <div class="col-md-3 col-6">
-                            <a href="/compras/nova"
-                               class="d-flex align-items-center gap-2 text-decoration-none p-3 rounded border h-100 hover-shadow"
-                               style="color: var(--text-primary);">
-                                <span class="stat-icon bg-brand" style="width:40px;height:40px;">
-                                    <i class="bi bi-plus-circle"></i></span>
+                <div class="row g-3">
+                    <div class="col-md-6 col-xl-3">
+                        <a href="/materiais" class="text-decoration-none">
+                            <div class="card stat-card h-100 hover-shadow">
+                                <div class="stat-icon bg-brand"><i class="bi bi-box-seam"></i></div>
                                 <div>
-                                    <div class="fw-semibold">Nova pré-compra</div>
-                                    <small class="text-muted">Lançar solicitação</small>
+                                    <p class="stat-label">Materiais cadastrados</p>
+                                    <p class="stat-value" th:text="${totalMateriais}">0</p>
+                                    <p class="stat-hint">
+                                        <span th:text="${totalAreas}"></span> áreas ·
+                                        <span th:text="${totalSubcategorias}"></span> subcategorias
+                                    </p>
                                 </div>
-                            </a>
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <a href="/compras/aguardando"
-                               class="d-flex align-items-center gap-2 text-decoration-none p-3 rounded border h-100"
-                               style="color: var(--text-primary);">
-                                <span class="stat-icon bg-warning-soft" style="width:40px;height:40px;">
-                                    <i class="bi bi-hourglass-split"></i></span>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="col-md-6 col-xl-3">
+                        <a href="/materiais" class="text-decoration-none">
+                            <div class="card stat-card h-100 hover-shadow">
+                                <div class="stat-icon bg-warning-soft"><i class="bi bi-exclamation-triangle"></i></div>
                                 <div>
-                                    <div class="fw-semibold">Receber compra</div>
-                                    <small class="text-muted">Baixa com NF</small>
+                                    <p class="stat-label">Em alerta de estoque</p>
+                                    <p class="stat-value" th:text="${materiaisEmAlerta}">0</p>
+                                    <p class="stat-hint">Abaixo do mínimo (RN06)</p>
                                 </div>
-                            </a>
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <a href="/movimentacoes/saida/nova"
-                               class="d-flex align-items-center gap-2 text-decoration-none p-3 rounded border h-100"
-                               style="color: var(--text-primary);">
-                                <span class="stat-icon bg-info-soft" style="width:40px;height:40px;">
-                                    <i class="bi bi-box-arrow-up"></i></span>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="col-md-6 col-xl-3">
+                        <a href="/compras/aguardando" class="text-decoration-none">
+                            <div class="card stat-card h-100 hover-shadow">
+                                <div class="stat-icon bg-info-soft"><i class="bi bi-cart3"></i></div>
                                 <div>
-                                    <div class="fw-semibold">Nova saída</div>
-                                    <small class="text-muted">Retirada por setor</small>
+                                    <p class="stat-label">Compras aguardando</p>
+                                    <p class="stat-value" th:text="${comprasAguardando}">0</p>
+                                    <p class="stat-hint">
+                                        <span th:text="${totalCompras}"></span> no histórico
+                                    </p>
                                 </div>
-                            </a>
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <a href="/materiais/novo"
-                               class="d-flex align-items-center gap-2 text-decoration-none p-3 rounded border h-100"
-                               style="color: var(--text-primary);">
-                                <span class="stat-icon bg-success-soft" style="width:40px;height:40px;">
-                                    <i class="bi bi-tag"></i></span>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="col-md-6 col-xl-3">
+                        <a href="/movimentacoes" class="text-decoration-none">
+                            <div class="card stat-card h-100 hover-shadow">
+                                <div class="stat-icon bg-success-soft"><i class="bi bi-arrow-left-right"></i></div>
                                 <div>
-                                    <div class="fw-semibold">Novo material</div>
-                                    <small class="text-muted">Gera SKU automático</small>
+                                    <p class="stat-label">Movimentações</p>
+                                    <p class="stat-value" th:text="${totalMovimentacoes}">0</p>
+                                    <p class="stat-hint">
+                                        <span th:text="${pendentesAprovacao}"></span> pendentes
+                                    </p>
                                 </div>
-                            </a>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============= Seção: Ações rápidas ============= -->
+            <section class="mb-4">
+                <div class="card">
+                    <div class="card-pad">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <h5 class="mb-0">Ações rápidas</h5>
+                                <p class="text-muted small mb-0">Operações mais frequentes do dia a dia.</p>
+                            </div>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6 col-xl-3">
+                                <a href="/compras/nova"
+                                   class="d-flex align-items-center gap-3 text-decoration-none p-3 rounded border h-100 hover-shadow"
+                                   style="color: var(--text-primary);">
+                                    <span class="stat-icon bg-brand" style="width:42px;height:42px;flex-shrink:0;">
+                                        <i class="bi bi-plus-circle"></i>
+                                    </span>
+                                    <div class="min-w-0">
+                                        <div class="fw-semibold">Nova pré-compra</div>
+                                        <small class="text-muted">Lançar solicitação</small>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-md-6 col-xl-3">
+                                <a href="/compras/aguardando"
+                                   class="d-flex align-items-center gap-3 text-decoration-none p-3 rounded border h-100 hover-shadow"
+                                   style="color: var(--text-primary);">
+                                    <span class="stat-icon bg-warning-soft" style="width:42px;height:42px;flex-shrink:0;">
+                                        <i class="bi bi-hourglass-split"></i>
+                                    </span>
+                                    <div class="min-w-0">
+                                        <div class="fw-semibold">Receber compra</div>
+                                        <small class="text-muted">Baixa com NF</small>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-md-6 col-xl-3">
+                                <a href="/movimentacoes/saida/nova"
+                                   class="d-flex align-items-center gap-3 text-decoration-none p-3 rounded border h-100 hover-shadow"
+                                   style="color: var(--text-primary);">
+                                    <span class="stat-icon bg-info-soft" style="width:42px;height:42px;flex-shrink:0;">
+                                        <i class="bi bi-box-arrow-up"></i>
+                                    </span>
+                                    <div class="min-w-0">
+                                        <div class="fw-semibold">Nova saída</div>
+                                        <small class="text-muted">Retirada por setor</small>
+                                    </div>
+                                </a>
+                            </div>
+                            <div class="col-md-6 col-xl-3">
+                                <a href="/materiais/novo"
+                                   class="d-flex align-items-center gap-3 text-decoration-none p-3 rounded border h-100 hover-shadow"
+                                   style="color: var(--text-primary);">
+                                    <span class="stat-icon bg-success-soft" style="width:42px;height:42px;flex-shrink:0;">
+                                        <i class="bi bi-tag"></i>
+                                    </span>
+                                    <div class="min-w-0">
+                                        <div class="fw-semibold">Novo material</div>
+                                        <small class="text-muted">Gera SKU automático</small>
+                                    </div>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- ============= Alertas de reposição (RN06) ============= -->
-            <div class="card mb-4" th:if="${!#lists.isEmpty(alertas)}">
+            <!-- ============= Seção: Alertas de reposição (RN06) ============= -->
+            <section class="mb-4" th:if="${!#lists.isEmpty(alertas)}">
+            <div class="card">
                 <div class="card-pad">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
@@ -179,15 +201,18 @@
                     </div>
                 </div>
             </div>
+            </section>
 
             <!-- Estado limpo quando não há alertas -->
-            <div class="card mb-4" th:if="${#lists.isEmpty(alertas)}">
-                <div class="card-pad text-center py-5">
-                    <i class="bi bi-check-circle text-success" style="font-size: 2.2rem;"></i>
-                    <h5 class="mt-2 mb-1">Estoque saudável</h5>
-                    <p class="text-muted mb-0">Nenhum material está abaixo do estoque mínimo agora.</p>
+            <section class="mb-4" th:if="${#lists.isEmpty(alertas)}">
+                <div class="card">
+                    <div class="card-pad text-center py-5">
+                        <i class="bi bi-check-circle text-success" style="font-size: 2.2rem;"></i>
+                        <h5 class="mt-2 mb-1">Estoque saudável</h5>
+                        <p class="text-muted mb-0">Nenhum material está abaixo do estoque mínimo agora.</p>
+                    </div>
                 </div>
-            </div>
+            </section>
 
         </div>
     </main>

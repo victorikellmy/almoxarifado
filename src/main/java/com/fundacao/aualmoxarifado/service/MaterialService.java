@@ -2,10 +2,15 @@ package com.fundacao.aualmoxarifado.service;
 
 import com.fundacao.aualmoxarifado.domain.Material;
 import com.fundacao.aualmoxarifado.domain.Subcategoria;
+import com.fundacao.aualmoxarifado.exception.RecursoNaoEncontradoException;
+import com.fundacao.aualmoxarifado.exception.RegraDeNegocioException;
 import com.fundacao.aualmoxarifado.repository.MaterialRepository;
 import com.fundacao.aualmoxarifado.repository.SubcategoriaRepository;
+import com.fundacao.aualmoxarifado.repository.spec.MaterialSpecifications;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,19 +18,31 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class MaterialService {
 
     private final MaterialRepository materialRepository;
     private final SubcategoriaRepository subcategoriaRepository;
     private final SkuGeneratorService skuGeneratorService;
 
-    public List<Material> listar() {
-        return materialRepository.findAll();
+    /**
+     * Listagem paginada e filtrada — usada pela tela web e pela REST API.
+     * Filtros nulos/vazios são ignorados.
+     */
+    public Page<Material> listar(String nome,
+                                 String sku,
+                                 Long subcategoriaId,
+                                 Long areaId,
+                                 Boolean emAlerta,
+                                 Pageable pageable) {
+        return materialRepository.findAll(
+                MaterialSpecifications.filtrar(nome, sku, subcategoriaId, areaId, emAlerta),
+                pageable);
     }
 
     public Material buscar(Long id) {
         return materialRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Material não encontrado."));
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Material", id));
     }
 
     /**
@@ -49,7 +66,8 @@ public class MaterialService {
         // Resolve a subcategoria gerenciada (precisamos da entidade carregada
         // para o gerador de SKU e para evitar TransientObjectException no save).
         Subcategoria sub = subcategoriaRepository.findById(material.getSubcategoria().getId())
-                .orElseThrow(() -> new IllegalArgumentException("Subcategoria não encontrada."));
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Subcategoria",
+                        material.getSubcategoria().getId()));
         material.setSubcategoria(sub);
 
         boolean ehNovo = material.getId() == null;
@@ -72,14 +90,19 @@ public class MaterialService {
         } catch (DataIntegrityViolationException ex) {
             // Defesa final contra duplicidade — o UNIQUE da coluna codigo_sku
             // disparou. Devolvemos uma mensagem clara em vez de stacktrace bruto.
-            throw new IllegalStateException(
+            throw new RegraDeNegocioException(
                     "Falha ao gravar o material: SKU duplicado ou violação de integridade. "
-                  + "Tente novamente.", ex);
+                  + "Tente novamente.");
         }
     }
 
     /** RN06 - Lista materiais com estoque abaixo (ou igual) do mínimo, para alertas no frontend. */
     public List<Material> alertasDeEstoque() {
         return materialRepository.findEmAlertaDeEstoque();
+    }
+
+    /** RN06 - Só a contagem (COUNT no banco), para telas que exibem apenas o número. */
+    public long contarAlertasDeEstoque() {
+        return materialRepository.countEmAlertaDeEstoque();
     }
 }
