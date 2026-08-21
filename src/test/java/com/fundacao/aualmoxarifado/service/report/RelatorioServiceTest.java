@@ -135,7 +135,15 @@ class RelatorioServiceTest {
 
         assertThat(arq.nome()).isEqualTo("relatorio-mensal-2026-07.csv");
         assertThat(arq.contentType()).startsWith("text/csv");
-        String csv = new String(arq.conteudo(), StandardCharsets.UTF_8);
+        // Arquivo agora expõe um writer (streaming) em vez de byte[]: materializa
+        // num buffer só no teste para inspecionar o conteúdo.
+        var bos = new java.io.ByteArrayOutputStream();
+        try {
+            arq.writer().writeTo(bos);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        String csv = bos.toString(StandardCharsets.UTF_8);
         assertThat(csv).contains("Resumo por tipo");
         assertThat(csv).contains("TI [CC CC-020]");
     }

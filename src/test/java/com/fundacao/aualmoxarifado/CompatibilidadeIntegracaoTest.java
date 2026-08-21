@@ -26,10 +26,13 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -65,6 +68,7 @@ class CompatibilidadeIntegracaoTest {
     @Autowired MaterialRepository materialRepository;
     @Autowired CompraRepository compraRepository;
     @Autowired UsuarioRepository usuarioRepository;
+    @Autowired com.fundacao.aualmoxarifado.repository.SetorRepository setorRepository;
 
     private static final int ANO = Year.now().getValue();
 
@@ -166,24 +170,24 @@ class CompatibilidadeIntegracaoTest {
     @Test
     @WithMockUser
     void exports_devolvemContentTypeCorretoNosTresFormatos() throws Exception {
-        mvc.perform(get("/api/relatorios/anual/export")
-                        .param("ano", String.valueOf(ANO)).param("formato", "CSV"))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Content-Type", containsString("text/csv")));
+        // Exports agora usam StreamingResponseBody (memória O(1)) → resposta
+        // assíncrona: é preciso fazer o asyncDispatch para materializar o result.
+        exportAsync("/api/relatorios/anual/export", "CSV", "text/csv");
+        exportAsync("/api/relatorios/anual/export", "XLSX", "spreadsheetml");
+        exportAsync("/api/relatorios/anual/export", "PDF", "application/pdf");
+        exportAsync("/api/relatorios/estoque/export", "CSV", "text/csv");
+    }
 
-        mvc.perform(get("/api/relatorios/anual/export")
-                        .param("ano", String.valueOf(ANO)).param("formato", "XLSX"))
-                .andExpect(status().isOk())
-                .andExpect(header().string("Content-Type",
-                        containsString("spreadsheetml")));
+    /** Dispara o export, faz o asyncDispatch e valida status 200 + content-type. */
+    private void exportAsync(String url, String formato, String contentTypeEsperado) throws Exception {
+        var mvcResult = mvc.perform(get(url)
+                        .param("ano", String.valueOf(ANO)).param("formato", formato))
+                .andExpect(request().asyncStarted())
+                .andReturn();
 
-        mvc.perform(get("/api/relatorios/anual/export")
-                        .param("ano", String.valueOf(ANO)).param("formato", "PDF"))
+        mvc.perform(asyncDispatch(mvcResult))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Content-Type", containsString("application/pdf")));
-
-        mvc.perform(get("/api/relatorios/estoque/export").param("formato", "CSV"))
-                .andExpect(status().isOk());
+                .andExpect(header().string("Content-Type", containsString(contentTypeEsperado)));
     }
 
     @Test
@@ -199,6 +203,117 @@ class CompatibilidadeIntegracaoTest {
 
         mvc.perform(get("/api/materiais").param("size", "5"))
                 .andExpect(status().isOk());
+    }
+
+    // =====================================================================
+    // 3b. Contrato da API mobile — espelha os critérios de aceite do app
+    // =====================================================================
+
+    @Test
+    void apiSemCredencial_recebe401ComCorpoJson_semRedirect() throws Exception {
+        mvc.perform(get("/api/setores"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(content().contentTypeCompatibleWith("application/json"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.mensagem").isNotEmpty())
+                .andExpect(jsonPath("$.path").value("/api/setores"));
+    }
+
+    @Test
+    @WithMockUser
+    void apiSetores_autenticado_devolveArrayComIdENome() throws Exception {
+        mvc.perform(get("/api/setores"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].id").isNumber())
+                .andExpect(jsonPath("$[0].nome").isNotEmpty());
+    }
+
+    @Test
+    @WithMockUser
+    void apiSaidas_baixaEstoqueNaHora_eReplayComMesmaChaveNaoBaixaDeNovo() throws Exception {
+        var material = materialRepository.findAll().stream()
+                .filter(m -> m.getEstoqueAtual() >= 2)
+                .findFirst().orElseThrow();
+        var setor = setorRepository.findAll().get(0);
+        int estoqueAntes = material.getEstoqueAtual();
+
+        String body = """
+                {"setorDestinoId": %d, "retiradoPor": "teste-integracao",
+                 "itens": [{"codigoSku": "%s", "quantidade": 1}]}
+                """.formatted(setor.getId(), material.getCodigoSku());
+        String chave = "it-idem-" + System.nanoTime();
+
+        mvc.perform(post("/api/saidas")
+                        .header("Idempotency-Key", chave)
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.setorDestinoId").value(setor.getId()))
+                .andExpect(jsonPath("$.nomeSetor").value(setor.getNome()))
+                .andExpect(jsonPath("$.totalItens").value(1))
+                .andExpect(jsonPath("$.movimentacaoIds").isArray())
+                .andExpect(jsonPath("$.dataRegistro").isNotEmpty());
+
+        assertThat(materialRepository.findById(material.getId()).orElseThrow().getEstoqueAtual())
+                .as("POST /api/saidas debita o estoque imediatamente")
+                .isEqualTo(estoqueAntes - 1);
+
+        // Replay com a mesma Idempotency-Key: mesma resposta, sem novo débito.
+        mvc.perform(post("/api/saidas")
+                        .header("Idempotency-Key", chave)
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isOk());
+
+        assertThat(materialRepository.findById(material.getId()).orElseThrow().getEstoqueAtual())
+                .as("reenvio com a mesma chave não pode debitar de novo")
+                .isEqualTo(estoqueAntes - 1);
+    }
+
+    @Test
+    @WithMockUser
+    void apiSaidas_estoqueInsuficiente_devolve422ComMensagemLegivel() throws Exception {
+        var material = materialRepository.findAll().get(0);
+        var setor = setorRepository.findAll().get(0);
+
+        String body = """
+                {"setorDestinoId": %d, "retiradoPor": null,
+                 "itens": [{"codigoSku": "%s", "quantidade": %d}]}
+                """.formatted(setor.getId(), material.getCodigoSku(),
+                              material.getEstoqueAtual() + 1_000);
+
+        mvc.perform(post("/api/saidas")
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().is(422))
+                .andExpect(jsonPath("$.mensagem", containsString("Estoque insuficiente")));
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void apiAuditoria_operador_recebe403() throws Exception {
+        // Trilha de auditoria é admin-only também na API (paridade com a web).
+        mvc.perform(get("/api/auditoria"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMINISTRADOR")
+    void apiAuditoria_admin_recebe200() throws Exception {
+        mvc.perform(get("/api/auditoria"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void webContinuaComFormLogin_redirecionandoNaoAutenticadoPara302() throws Exception {
+        // A cadeia web (fora de /api) segue com redirect para o formulário —
+        // prova de que o entry point JSON ficou restrito ao /api/**.
+        mvc.perform(get("/materiais"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(header().string("Location", containsString("/login")));
+
+        mvc.perform(get("/login")).andExpect(status().isOk());
     }
 
     // =====================================================================

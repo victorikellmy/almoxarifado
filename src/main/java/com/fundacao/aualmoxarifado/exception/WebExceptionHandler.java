@@ -39,7 +39,7 @@ public class WebExceptionHandler {
 
     @ExceptionHandler(RegraDeNegocioException.class)
     public String handleBusiness(RegraDeNegocioException ex, Model model, HttpServletRequest req) {
-        log.info("409 web: {} — {}", req.getRequestURI(), ex.getMessage());
+        log.info("{} web: {} — {}", TipoErro.REGRA_NEGOCIO.status(), req.getRequestURI(), ex.getMessage());
         return paginaErro(model, TipoErro.REGRA_NEGOCIO, ex.getMessage());
     }
 

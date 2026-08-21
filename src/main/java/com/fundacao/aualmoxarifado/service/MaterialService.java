@@ -25,10 +25,6 @@ public class MaterialService {
     private final SubcategoriaRepository subcategoriaRepository;
     private final SkuGeneratorService skuGeneratorService;
 
-    public List<Material> listar() {
-        return materialRepository.findAll();
-    }
-
     /**
      * Listagem paginada e filtrada — usada pela tela web e pela REST API.
      * Filtros nulos/vazios são ignorados.

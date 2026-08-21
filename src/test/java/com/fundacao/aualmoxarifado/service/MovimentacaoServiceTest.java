@@ -131,6 +131,58 @@ class MovimentacaoServiceTest {
                 .hasMessageContaining("maior que zero");
     }
 
+    // ============= registrarSaida com baixa imediata (app mobile) =============
+
+    @Test
+    void registrarSaida_comBaixaImediata_nasceEntregue_eDebitaEstoqueNaHora() {
+        when(materialRepository.findAllById(List.of(1L))).thenReturn(List.of(caneta));
+
+        Movimentacao mov = service.registrarSaida(
+                setor, "joao.silva", null,
+                List.of(new LinhaItem(1L, 5)), true);
+
+        assertThat(mov.getStatus())
+                .as("bipagem no balcão: material já saiu fisicamente, nasce ENTREGUE")
+                .isEqualTo(StatusMovimentacao.ENTREGUE);
+        assertThat(caneta.getEstoqueAtual())
+                .as("estoque debitado na mesma transação")
+                .isEqualTo(45);
+        // Débito via dirty checking — nunca save() por material.
+        verify(materialRepository, never()).save(any());
+        verify(auditoriaService).registrarSaida(mov);
+    }
+
+    @Test
+    void registrarSaida_comBaixaImediata_linhasRepetidasValidamContraSaldoJaDebitado() {
+        caneta.setEstoqueAtual(8);
+        when(materialRepository.findAllById(List.of(1L))).thenReturn(List.of(caneta));
+
+        // 5 + 5 = 10 > 8: a segunda linha deve falhar contra o saldo restante (3).
+        assertThatThrownBy(() -> service.registrarSaida(
+                setor, "joao.silva", null,
+                List.of(new LinhaItem(1L, 5), new LinhaItem(1L, 5)), true))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("Estoque insuficiente");
+
+        verify(movimentacaoRepository, never()).save(any());
+        verify(auditoriaService, never()).registrarSaida(any());
+    }
+
+    @Test
+    void registrarSaida_comBaixaImediata_estoqueInsuficiente_naoSalvaNada() {
+        caneta.setEstoqueAtual(3);
+        when(materialRepository.findAllById(List.of(1L))).thenReturn(List.of(caneta));
+
+        assertThatThrownBy(() -> service.registrarSaida(
+                setor, "joao.silva", null,
+                List.of(new LinhaItem(1L, 10)), true))
+                .isInstanceOf(RegraDeNegocioException.class)
+                .hasMessageContaining("Estoque insuficiente");
+
+        assertThat(caneta.getEstoqueAtual()).isEqualTo(3);
+        verify(movimentacaoRepository, never()).save(any());
+    }
+
     // ============= registrarEntrada =============
 
     @Test

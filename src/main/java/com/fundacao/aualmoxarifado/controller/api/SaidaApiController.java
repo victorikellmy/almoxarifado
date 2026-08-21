@@ -41,8 +41,10 @@ import java.util.regex.Pattern;
  * <p>Fluxo: o app seleciona um Setor, bipa N produtos (SKU + quantidade) e
  * envia tudo aqui em uma única requisição. Toda requisição vira <b>uma única
  * Movimentacao multi-item</b> do tipo SAIDA reusando
- * {@link MovimentacaoService#registrarSaida} (RN03 — setor obrigatório, RN04
- * — nasce PENDENTE_APROVACAO, estoque debitado só após aprovação).</p>
+ * {@link MovimentacaoService#registrarSaida} com <b>baixa imediata</b>: na
+ * bipagem o material já está saindo fisicamente do balcão, então a saída
+ * nasce ENTREGUE e o estoque é debitado na mesma transação (tudo ou nada) —
+ * diferente do fluxo web, que segue RN04 (pendente de aprovação).</p>
  *
  * <p>Tratamento de erros: o controller <b>não captura exceções</b>. Toda
  * sinalização de falha (SKU inválido/inexistente, setor inexistente, saldo
@@ -108,8 +110,9 @@ public class SaidaApiController {
             @Valid @RequestBody SaidaRequestDTO request,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
 
-        log.info("[API] Saída recebida: setorId={}, retiradoPor={}, itens={}, idempotencyKey={}",
-                request.setorDestinoId(), request.retiradoPor(), request.itens().size(), idempotencyKey);
+        // Não logamos retiradoPor (nome de pessoa = dado pessoal) em nível INFO.
+        log.info("[API] Saída recebida: setorId={}, itens={}, idempotencyKey={}",
+                request.setorDestinoId(), request.itens().size(), idempotencyKey);
 
         SaidaResponseDTO response = idempotencyService.executar(
                 idempotencyKey,
@@ -145,14 +148,19 @@ public class SaidaApiController {
         }
 
         Movimentacao salva = movimentacaoService.registrarSaida(
-                setor, request.retiradoPor(), null, linhas);
+                setor, request.retiradoPor(), null, linhas, true);
 
-        log.info("[API] Saída #{} registrada com {} item(ns)", salva.getId(), linhas.size());
+        // totalItens = total de unidades bipadas (soma das quantidades),
+        // conforme o contrato do app — não o número de linhas.
+        int totalUnidades = linhas.stream().mapToInt(LinhaItem::quantidade).sum();
+
+        log.info("[API] Saída #{} registrada com {} linha(s), {} unidade(s)",
+                salva.getId(), linhas.size(), totalUnidades);
         return new SaidaResponseDTO(
                 salva.getData(),
                 setor.getId(),
                 setor.getNome(),
-                linhas.size(),
+                totalUnidades,
                 List.of(salva.getId()));
     }
 

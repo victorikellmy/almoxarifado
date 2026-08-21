@@ -10,7 +10,9 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
+import org.springframework.security.config.annotation.web.configurers.SessionManagementConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
@@ -29,6 +31,26 @@ import org.springframework.security.web.SecurityFilterChain;
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final ApiAuthenticationEntryPoint apiAuthenticationEntryPoint;
+
+    /**
+     * Console H2 só existe em dev. A flag reflete {@code spring.h2.console.enabled}
+     * (true apenas no perfil dev), então em produção as regras que abrem o
+     * console nem entram na cadeia de filtros.
+     */
+    @org.springframework.beans.factory.annotation.Value("${spring.h2.console.enabled:false}")
+    private boolean h2ConsoleEnabled;
+
+    /**
+     * Necessário para o {@code maximumSessions(1)} funcionar: publica os eventos
+     * de criação/destruição de sessão para o SessionRegistry, senão sessões
+     * encerradas nunca são liberadas do contador e o usuário fica travado.
+     */
+    @Bean
+    public org.springframework.security.web.session.HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new org.springframework.security.web.session.HttpSessionEventPublisher();
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -61,9 +83,18 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/importacao/**").hasRole("ADMINISTRADOR")
+                        // Trilha de auditoria é admin-only na web; a API tem de
+                        // seguir a mesma regra, senão um OPERADOR (ou a credencial
+                        // do app mobile) leria o histórico inteiro de todos.
+                        .requestMatchers("/api/auditoria/**").hasRole("ADMINISTRADOR")
                         .anyRequest().authenticated()
                 )
-                .httpBasic(Customizer.withDefaults());
+                .httpBasic(basic -> basic.authenticationEntryPoint(apiAuthenticationEntryPoint))
+                // Falha de autenticação → 401 JSON; falta de perfil → 403 JSON.
+                // Nunca 302 para /login: o app mobile não sabe seguir redirect de formulário.
+                .exceptionHandling(ex -> ex
+                        .authenticationEntryPoint(apiAuthenticationEntryPoint)
+                        .accessDeniedHandler(apiAuthenticationEntryPoint));
         return http.build();
     }
 
@@ -78,13 +109,17 @@ public class SecurityConfig {
     @Order(2)
     public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
         http
-                .authorizeHttpRequests(auth -> auth
+                .authorizeHttpRequests(auth -> {
                         // públicos (estáticos ficam fora da cadeia — ver ignorarEstaticos())
-                        .requestMatchers("/login").permitAll()
-                        .requestMatchers("/h2-console/**").permitAll()
+                        auth.requestMatchers("/login").permitAll();
+                        // Console H2 só é liberado quando de fato habilitado (dev).
+                        // Em prod a regra nem existe, então /h2-console cai em authenticated.
+                        if (h2ConsoleEnabled) {
+                            auth.requestMatchers("/h2-console/**").permitAll();
+                        }
 
                         // ações administrativas
-                        .requestMatchers("/usuarios/**").hasRole("ADMINISTRADOR")
+                        auth.requestMatchers("/usuarios/**").hasRole("ADMINISTRADOR")
                         .requestMatchers("/auditoria/**").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/movimentacoes/*/status").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/areas/*/excluir").hasRole("ADMINISTRADOR")
@@ -92,8 +127,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/materiais/*/excluir").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/setores/*/excluir").hasRole("ADMINISTRADOR")
 
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated();
+                })
                 .formLogin(form -> form
                         .loginPage("/login")
                         .defaultSuccessUrl("/", true)
@@ -103,11 +138,38 @@ public class SecurityConfig {
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .logoutSuccessUrl("/login?desconectado")
+                        .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
                         .permitAll()
                 )
-                .headers(h -> h.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin))
-                .csrf(c -> c.ignoringRequestMatchers("/h2-console/**"));
+                // Sessão: fixação tratada pelo default (changeSessionId no login).
+                // maximumSessions(1) impede que a mesma conta fique aberta em
+                // vários lugares ao mesmo tempo — um novo login expira o anterior,
+                // reduzindo a janela de uma credencial compartilhada/roubada.
+                .sessionManagement(s -> s
+                        .sessionFixation(SessionManagementConfigurer.SessionFixationConfigurer::changeSessionId)
+                        .maximumSessions(1)
+                        .maxSessionsPreventsLogin(false)
+                        .expiredUrl("/login?expirado"))
+                .headers(h -> {
+                        // frameOptions: sameOrigin só é necessário para o console H2 (dev).
+                        // Em prod, DENY — nada legítimo embute o app em iframe.
+                        if (h2ConsoleEnabled) {
+                            h.frameOptions(HeadersConfigurer.FrameOptionsConfig::sameOrigin);
+                        } else {
+                            h.frameOptions(HeadersConfigurer.FrameOptionsConfig::deny);
+                        }
+                        // Referrer-Policy: impede que URLs internas (com filtros/ids
+                        // em query string) vazem no header Referer para sites externos.
+                        h.referrerPolicy(r -> r.policy(
+                                ReferrerPolicyHeaderWriter.ReferrerPolicy.SAME_ORIGIN));
+                })
+                // CSRF continua ativo no fluxo web; só o console H2 (dev) é isento.
+                .csrf(c -> {
+                        if (h2ConsoleEnabled) {
+                            c.ignoringRequestMatchers("/h2-console/**");
+                        }
+                });
         return http.build();
     }
 }

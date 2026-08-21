@@ -92,7 +92,7 @@ public class MovimentacaoService {
     // =========================================================================
 
     /**
-     * Registra uma SAÍDA multi-item.
+     * Registra uma SAÍDA multi-item pelo fluxo web (RN04).
      *
      * <p>RN03 — Setor obrigatório. RN04 — nasce com {@code PENDENTE_APROVACAO};
      * o estoque NÃO é debitado nesse momento (somente após aprovação).</p>
@@ -104,22 +104,52 @@ public class MovimentacaoService {
                                        String retiradoPor,
                                        String observacao,
                                        List<LinhaItem> linhas) {
+        return registrarSaida(setor, retiradoPor, observacao, linhas, false);
+    }
+
+    /**
+     * Registra uma SAÍDA multi-item.
+     *
+     * <p>RN03 — Setor obrigatório. Com {@code baixaImediata=false} (fluxo web,
+     * RN04) a saída nasce {@code PENDENTE_APROVACAO} e o estoque só é debitado
+     * na aprovação ({@link #alterarStatus}). Com {@code baixaImediata=true}
+     * (bipagem no balcão via app — o material já está saindo fisicamente) a
+     * saída nasce {@code ENTREGUE} e o estoque é debitado aqui, na mesma
+     * transação: tudo ou nada.</p>
+     */
+    @Transactional
+    @CacheEvict(cacheNames = {CacheConfig.CACHE_REL_MENSAL, CacheConfig.CACHE_REL_TRIMESTRAL,
+            CacheConfig.CACHE_REL_ANUAL}, allEntries = true)
+    public Movimentacao registrarSaida(Setor setor,
+                                       String retiradoPor,
+                                       String observacao,
+                                       List<LinhaItem> linhas,
+                                       boolean baixaImediata) {
         validarSetorObrigatorio(setor, "RN03: o setor de destino é obrigatório para registrar uma saída.");
         validarLinhasNaoVazias(linhas);
 
         Movimentacao mov = novaCabeca(TipoMovimentacao.SAIDA, setor, retiradoPor,
-                                      null, null, observacao, StatusMovimentacao.PENDENTE_APROVACAO);
+                                      null, null, observacao,
+                                      baixaImediata ? StatusMovimentacao.ENTREGUE
+                                                    : StatusMovimentacao.PENDENTE_APROVACAO);
 
         Map<Long, Material> materiais = carregarMateriais(linhas);
         for (LinhaItem ln : linhas) {
             Material material = materialDe(materiais, ln.materialId());
             validarQuantidade(ln.quantidade());
-            // Validação: estoque suficiente AGORA (não debita ainda, mas evita pedidos absurdos)
+            // Validação: estoque suficiente AGORA. Debitando linha a linha,
+            // linhas repetidas do mesmo material são validadas contra o saldo
+            // já decrementado pelas anteriores.
             if (material.getEstoqueAtual() < ln.quantidade()) {
                 throw new RegraDeNegocioException(
                         "Estoque insuficiente para \"" + material.getNome() + "\". "
                                 + "Disponível: " + material.getEstoqueAtual()
                                 + ", solicitado: " + ln.quantidade());
+            }
+            if (baixaImediata) {
+                // Entidade gerenciada: dirty checking persiste no commit; um
+                // rollback (ex. falha em item posterior) desfaz todos os débitos.
+                material.setEstoqueAtual(material.getEstoqueAtual() - ln.quantidade());
             }
             mov.adicionarItem(MovimentacaoItem.builder()
                     .material(material)
@@ -315,7 +345,7 @@ public class MovimentacaoService {
 
     private static void validarSetorObrigatorio(Setor setor, String mensagem) {
         if (setor == null || setor.getId() == null) {
-            // RN03/RN10 é regra de negócio explícita — 409.
+            // RN03/RN10 é regra de negócio explícita — 422.
             throw new RegraDeNegocioException(mensagem);
         }
     }

@@ -47,13 +47,13 @@ class ExceptionHandlersTest {
         }
 
         @Test
-        void regraDeNegocio_rendezizaViewErroCom409() {
+        void regraDeNegocio_rendezizaViewErroCom422() {
             Model model = new ConcurrentModel();
             String view = handler.handleBusiness(
                     new RegraDeNegocioException("Estoque insuficiente"), model, request);
 
             assertThat(view).isEqualTo("erro");
-            assertThat(model.getAttribute("status")).isEqualTo(409);
+            assertThat(model.getAttribute("status")).isEqualTo(422);
             assertThat(model.getAttribute("mensagem")).isEqualTo("Estoque insuficiente");
         }
 

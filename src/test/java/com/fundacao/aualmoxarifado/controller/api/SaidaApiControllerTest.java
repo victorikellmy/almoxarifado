@@ -30,7 +30,9 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -73,7 +75,7 @@ class SaidaApiControllerTest {
     void registrarSaida_fluxoFeliz_retorna200ComMovimentacaoId() {
         when(setorRepository.findById(10L)).thenReturn(Optional.of(setor));
         when(materialRepository.findByCodigoSkuIn(List.of("PAP-ESC-00001"))).thenReturn(List.of(caneta));
-        when(movimentacaoService.registrarSaida(any(), any(), any(), anyList()))
+        when(movimentacaoService.registrarSaida(any(), any(), any(), anyList(), anyBoolean()))
                 .thenReturn(Movimentacao.builder()
                         .id(123L)
                         .tipo(TipoMovimentacao.SAIDA)
@@ -91,14 +93,16 @@ class SaidaApiControllerTest {
         assertThat(resp.getBody()).isNotNull();
         assertThat(resp.getBody().movimentacaoIds()).containsExactly(123L);
         assertThat(resp.getBody().nomeSetor()).isEqualTo("TI");
-        assertThat(resp.getBody().totalItens()).isEqualTo(1);
+        assertThat(resp.getBody().totalItens())
+                .as("totalItens = soma das quantidades bipadas (contrato do app)")
+                .isEqualTo(5);
     }
 
     @Test
     void registrarSaida_skuMinusculo_eUpcaseParaLookup() {
         when(setorRepository.findById(10L)).thenReturn(Optional.of(setor));
         when(materialRepository.findByCodigoSkuIn(List.of("PAP-ESC-00001"))).thenReturn(List.of(caneta));
-        when(movimentacaoService.registrarSaida(any(), any(), any(), anyList()))
+        when(movimentacaoService.registrarSaida(any(), any(), any(), anyList(), anyBoolean()))
                 .thenReturn(movimentacaoDummy());
 
         SaidaRequestDTO req = new SaidaRequestDTO(10L, "joao",
@@ -150,7 +154,7 @@ class SaidaApiControllerTest {
     void registrarSaida_propagaRegraDeNegocioDoService() {
         when(setorRepository.findById(10L)).thenReturn(Optional.of(setor));
         when(materialRepository.findByCodigoSkuIn(List.of("PAP-ESC-00001"))).thenReturn(List.of(caneta));
-        when(movimentacaoService.registrarSaida(any(), any(), any(), anyList()))
+        when(movimentacaoService.registrarSaida(any(), any(), any(), anyList(), anyBoolean()))
                 .thenThrow(new RegraDeNegocioException("Estoque insuficiente para \"Caneta Azul\""));
 
         SaidaRequestDTO req = new SaidaRequestDTO(10L, "joao",
@@ -165,7 +169,7 @@ class SaidaApiControllerTest {
     void registrarSaida_replayComMesmaChave_naoReexecutaService() {
         when(setorRepository.findById(10L)).thenReturn(Optional.of(setor));
         when(materialRepository.findByCodigoSkuIn(List.of("PAP-ESC-00001"))).thenReturn(List.of(caneta));
-        when(movimentacaoService.registrarSaida(any(), any(), any(), anyList()))
+        when(movimentacaoService.registrarSaida(any(), any(), any(), anyList(), anyBoolean()))
                 .thenReturn(Movimentacao.builder()
                         .id(777L)
                         .data(LocalDateTime.now())
@@ -182,14 +186,14 @@ class SaidaApiControllerTest {
         assertThat(replay.getBody()).isSameAs(primeira.getBody());
 
         verify(movimentacaoService, times(1))
-                .registrarSaida(any(Setor.class), any(), any(), anyList());
+                .registrarSaida(any(Setor.class), any(), any(), anyList(), eq(true));
     }
 
     @Test
     void registrarSaida_semChave_executaSempre() {
         when(setorRepository.findById(10L)).thenReturn(Optional.of(setor));
         when(materialRepository.findByCodigoSkuIn(List.of("PAP-ESC-00001"))).thenReturn(List.of(caneta));
-        when(movimentacaoService.registrarSaida(any(), any(), any(), anyList()))
+        when(movimentacaoService.registrarSaida(any(), any(), any(), anyList(), anyBoolean()))
                 .thenReturn(movimentacaoDummy());
 
         SaidaRequestDTO req = new SaidaRequestDTO(10L, "joao",
@@ -200,7 +204,7 @@ class SaidaApiControllerTest {
         controller.registrarSaida(req, "  ");
 
         verify(movimentacaoService, times(3))
-                .registrarSaida(any(Setor.class), any(), any(), anyList());
+                .registrarSaida(any(Setor.class), any(), any(), anyList(), eq(true));
     }
 
     // ---------- helpers ----------

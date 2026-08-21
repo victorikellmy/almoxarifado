@@ -11,7 +11,9 @@ package com.fundacao.aualmoxarifado.exception;
 public enum TipoErro {
 
     NAO_ENCONTRADO(404, "Recurso não encontrado"),
-    REGRA_NEGOCIO(409, "Regra de negócio violada"),
+    // 422 (e não 409): o contrato do app mobile espera 400/422 para falha de
+    // validação de negócio (ex. estoque insuficiente) e exibe o campo mensagem.
+    REGRA_NEGOCIO(422, "Regra de negócio violada"),
     CONFLITO_DADOS(409, "Conflito de dados"),
     ARQUIVO_GRANDE(413, "Arquivo grande demais");
 

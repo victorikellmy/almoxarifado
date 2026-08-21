@@ -27,7 +27,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -76,7 +75,20 @@ public class RelatorioService {
 
     public enum Formato { CSV, XLSX, PDF }
 
-    public record Arquivo(byte[] conteudo, String contentType, String nome) {}
+    /**
+     * Relatório pronto para download — <b>sem materializar o arquivo inteiro em
+     * memória</b>. O {@link #writer()} é executado só na hora de escrever na
+     * resposta HTTP (via {@code StreamingResponseBody}), com o exporter gravando
+     * direto no {@code OutputStream} do cliente. As linhas já são Strings prontas
+     * (construídas dentro da transação), então o streaming não toca em entidade
+     * lazy nem depende de sessão Hibernate aberta.
+     */
+    public record Arquivo(String nome, String contentType, ConteudoWriter writer) {
+        @FunctionalInterface
+        public interface ConteudoWriter {
+            void writeTo(java.io.OutputStream out) throws Exception;
+        }
+    }
 
     /** Bundle de dados do relatório mensal — consumido pelo template. */
     public record DadosMensal(
@@ -490,16 +502,13 @@ public class RelatorioService {
             case XLSX -> xlsxExporter;
             case PDF  -> pdfExporter;
         };
-        try (ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
-            exp.exportar(titulo, cabecalhos, linhas, bos);
-            String nome = titulo.toLowerCase(Locale.ROOT)
-                    .replace(' ', '-')
-                    .replace('/', '-') + "." + exp.fileExtension();
-            return new Arquivo(bos.toByteArray(), exp.contentType(), nome);
-        } catch (Exception e) {
-            // Encadeia a causa: sem ela, falhas de I/O/POI chegam ao log sem stack trace.
-            throw new RegraDeNegocioException("Falha ao gerar relatório: " + e.getMessage(), e);
-        }
+        String nome = titulo.toLowerCase(Locale.ROOT)
+                .replace(' ', '-')
+                .replace('/', '-') + "." + exp.fileExtension();
+        // Escrita adiada: o exporter grava direto no stream da resposta,
+        // sem passar por um byte[] intermediário do arquivo inteiro.
+        return new Arquivo(nome, exp.contentType(),
+                out -> exp.exportar(titulo, cabecalhos, linhas, out));
     }
 
     private static String labelTipo(TipoMovimentacao t) {
