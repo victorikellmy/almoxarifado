@@ -132,13 +132,7 @@ public class SecurityConfig {
             )
             .formLogin(form -> form
                     .loginPage("/login")
-                    // alwaysUse=true: após login SEMPRE vai para o dashboard,
-                    // ignorando o "saved request". Sem isso, se o usuário chegou
-                    // deslogado a uma URL protegida qualquer (ex.: /error?continue,
-                    // um bookmark antigo), o Spring reproduz esse request salvo e
-                    // o joga de volta lá após logar — foi o que causava a tela de
-                    // erro pós-login em produção (status 999 do /error).
-                    .defaultSuccessUrl("/", true)
+                    .defaultSuccessUrl("/", false)
                     .failureUrl("/login?erro")
                     .permitAll()
             )

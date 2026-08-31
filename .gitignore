@@ -50,3 +50,9 @@ out/
 
 ### VS Code ###
 .vscode/
+.gradle/
+.idea/
+node_modules/
+data/
+.claude/settings.local.json
+*.log
