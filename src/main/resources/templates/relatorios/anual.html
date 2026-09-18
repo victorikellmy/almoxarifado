@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Relatório anual')}"></head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('rel-anual')}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout ::
+                              topbar('Relatório anual',
+                                     'Consolidado para contabilidade — fechamento do exercício')}"></header>
+
+        <div class="app-content">
+
+            <!-- Filtro -->
+            <div class="card mb-3">
+                <div class="card-pad">
+                    <form method="get" th:action="@{/relatorios/anual}" class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label">Ano-base</label>
+                            <input type="number" name="ano" class="form-control" min="2000" max="2100"
+                                   th:value="${ano}">
+                        </div>
+                        <div class="col-md-3">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-funnel"></i> Filtrar
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label d-block">Exportar consolidado</label>
+                            <div th:replace="~{fragments/relatorio ::
+                                              exportBar('/api/relatorios/anual/export', |ano=${ano}|)}"></div>
+                        </div>
+                    </form>
+                    <hr/>
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <p class="text-muted small mb-0">
+                            <i class="bi bi-info-circle"></i>
+                            A versão <strong>detalhada</strong> traz uma linha por item de cada movimentação do ano —
+                            útil para auditoria e conferência da contabilidade.
+                        </p>
+                        <div class="btn-group">
+                            <a class="btn btn-sm btn-warning"
+                               th:href="@{|/api/relatorios/anual/export-detalhado?formato=XLSX&ano=${ano}|}">
+                                <i class="bi bi-file-earmark-spreadsheet"></i> Baixar detalhado (XLSX)
+                            </a>
+                            <a class="btn btn-sm btn-outline-secondary"
+                               th:href="@{|/api/relatorios/anual/export-detalhado?formato=CSV&ano=${ano}|}">
+                                CSV
+                            </a>
+                            <a class="btn btn-sm btn-outline-secondary"
+                               th:href="@{|/api/relatorios/anual/export-detalhado?formato=PDF&ano=${ano}|}">
+                                PDF
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cabeçalho do exercício -->
+            <div class="card mb-3">
+                <div class="card-pad d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <h4 class="mb-1" th:text="|Exercício ${dados.ano()}|">Exercício</h4>
+                        <small class="text-muted">Consolidado anual de movimentações</small>
+                    </div>
+                    <div class="text-end">
+                        <div class="text-muted small text-uppercase" style="letter-spacing:.05em;">Valor total movimentado</div>
+                        <div class="fs-2 fw-bold"
+                             th:text="${'R$ ' + #numbers.formatDecimal(dados.totalGeral().valorTotal(), 1, 'POINT', 2, 'COMMA')}">R$ 0,00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cards de resumo por tipo -->
+            <div class="row g-3 mb-3">
+                <div th:replace="~{fragments/relatorio ::
+                                  cardsResumoTipo(${dados.resumoPorTipo}, 'col-md-4')}"></div>
+            </div>
+
+            <!-- Consolidado mês-a-mês -->
+            <div class="card table-card mb-3">
+                <div class="table-card-head">
+                    <div>
+                        <h5 class="mb-0">Consolidado mensal</h5>
+                        <small class="text-muted">12 meses do exercício — valores e quantidades</small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table th:replace="~{fragments/relatorio ::
+                                        tabelaMeses(${dados.meses}, ${dados.totaisMeses()},
+                                                    'MMMM', |TOTAL ${dados.ano()}|)}"></table>
+                </div>
+            </div>
+
+            <!-- Gasto por setor / centro de custo -->
+            <div class="card table-card">
+                <div class="table-card-head">
+                    <div>
+                        <h5 class="mb-0">Custo por centro de custo / setor</h5>
+                        <small class="text-muted">Apresentação contábil — ordenado por valor</small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table th:replace="~{fragments/relatorio ::
+                                        tabelaGastoPorSetor(${dados.gastoPorSetor},
+                                                            'Itens consumidos', 'Valor anual', 'bg-primary',
+                                                            'Sem custos atribuídos a setores no exercício.')}"></table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

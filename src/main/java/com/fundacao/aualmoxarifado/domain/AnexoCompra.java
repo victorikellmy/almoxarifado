@@ -17,7 +17,9 @@ import java.time.LocalDateTime;
  * {@code GET /compras/{id}/anexos/{anexoId}/download}.
  */
 @Entity
-@Table(name = "anexo_compra")
+@Table(name = "anexo_compra", indexes = {
+        @Index(name = "idx_anexo_compra_compra", columnList = "compra_id")
+})
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class AnexoCompra {
 

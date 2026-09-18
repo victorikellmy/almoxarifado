@@ -5,7 +5,8 @@
 <div class="app-shell">
     <aside th:replace="~{fragments/layout :: sidebar('movimentacoes')}"></aside>
     <main class="app-main">
-        <header th:replace="~{fragments/layout :: topbar('Movimentações', 'Histórico de entradas, saídas e compras diretas')}"></header>
+        <header th:replace="~{fragments/layout :: topbar('Movimentações',
+                              'Histórico de entradas, saídas e compras diretas')}"></header>
 
         <div class="app-content">
 
@@ -16,11 +17,72 @@
                 </a>
             </div>
 
+            <!-- Filtros -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <form method="get" action="/movimentacoes" class="row g-2 align-items-end">
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Tipo</label>
+                            <select name="tipo" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                <option value="ENTRADA"       th:selected="${filtroTipo?.name() == 'ENTRADA'}">Entrada</option>
+                                <option value="SAIDA"         th:selected="${filtroTipo?.name() == 'SAIDA'}">Saída</option>
+                                <option value="COMPRA_DIRETA" th:selected="${filtroTipo?.name() == 'COMPRA_DIRETA'}">Compra direta</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Status</label>
+                            <select name="status" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                <option value="PENDENTE_APROVACAO" th:selected="${filtroStatus?.name() == 'PENDENTE_APROVACAO'}">Pendente</option>
+                                <option value="APROVADO"           th:selected="${filtroStatus?.name() == 'APROVADO'}">Aprovado</option>
+                                <option value="ENTREGUE"           th:selected="${filtroStatus?.name() == 'ENTREGUE'}">Entregue</option>
+                                <option value="REJEITADO"          th:selected="${filtroStatus?.name() == 'REJEITADO'}">Rejeitado</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Setor</label>
+                            <select name="setorId" class="form-select form-select-sm">
+                                <option value="">Todos</option>
+                                <option th:each="s : ${setores}"
+                                        th:value="${s.id}"
+                                        th:text="${s.nome}"
+                                        th:selected="${filtroSetorId != null and filtroSetorId == s.id}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">De</label>
+                            <input type="date" name="inicio" class="form-control form-control-sm"
+                                   th:value="${filtroInicio}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Até</label>
+                            <input type="date" name="fim" class="form-control form-control-sm"
+                                   th:value="${filtroFim}">
+                        </div>
+                        <div class="col-md-2 d-flex gap-2">
+                            <button class="btn btn-sm btn-primary flex-grow-1">
+                                <i class="bi bi-funnel"></i> Filtrar
+                            </button>
+                            <a href="/movimentacoes" class="btn btn-sm btn-outline-secondary" title="Limpar filtros">
+                                <i class="bi bi-x-lg"></i>
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <div class="card table-card">
                 <div class="table-card-head">
                     <div>
                         <h5 class="mb-0">Histórico</h5>
-                        <small class="text-muted"><span th:text="${#lists.size(movimentacoes)}"></span> registro(s)</small>
+                        <small class="text-muted">
+                            <span th:text="${page.totalElements}"></span> movimentação(ões)
+                            <span th:if="${page.totalPages > 1}">
+                                — página <span th:text="${page.number + 1}"></span>
+                                de <span th:text="${page.totalPages}"></span>
+                            </span>
+                        </small>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -30,8 +92,8 @@
                             <th>#</th>
                             <th>Data</th>
                             <th>Tipo</th>
-                            <th>Material</th>
-                            <th class="text-end">Qtd.</th>
+                            <th>Itens</th>
+                            <th class="text-end">Qtd. total</th>
                             <th>Setor destino</th>
                             <th>Retirado por</th>
                             <th>Status</th>
@@ -39,7 +101,8 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr th:each="m : ${movimentacoes}">
+                        <tr th:each="m : ${page.content}" style="cursor:pointer;"
+                            th:onclick="|window.location.href='/movimentacoes/${m.id}'|">
                             <td class="text-muted" th:text="${m.id}"></td>
                             <td class="text-muted small" th:text="${#temporals.format(m.data, 'dd/MM/yyyy HH:mm')}"></td>
                             <td>
@@ -53,23 +116,30 @@
                                     <i class="bi bi-cart3"></i> Compra direta
                                 </span>
                             </td>
-                            <td class="fw-semibold" th:text="${m.material.nome}"></td>
-                            <td class="text-end fw-bold" th:text="${m.quantidade}"></td>
-                            <td th:text="${m.setorDestino != null ? m.setorDestino.nome : '—'}"></td>
-                            <td class="text-muted small" th:text="${m.retiradoPor} ?: '—'"></td>
                             <td>
-                                <span class="status-pill"
-                                      th:classappend="${m.status.name() == 'PENDENTE_APROVACAO'} ? 'text-warning'
-                                                    : (${m.status.name() == 'APROVADO'} ? 'text-info'
-                                                    : (${m.status.name() == 'ENTREGUE'} ? 'text-success'
-                                                    : 'text-danger'))"
-                                      th:style="${m.status.name() == 'PENDENTE_APROVACAO'} ? 'background:#fef3c7;'
-                                              : (${m.status.name() == 'APROVADO'} ? 'background:#e0f2fe;'
-                                              : (${m.status.name() == 'ENTREGUE'} ? 'background:#d1fae5;'
-                                              : 'background:#fee2e2;'))"
-                                      th:text="${m.status}"></span>
+                                <span class="badge bg-secondary me-1"
+                                      th:text="${#lists.size(m.itens)} + ' item(ns)'"></span>
+                                <span class="text-muted small" th:text="${m.resumoItens}"></span>
                             </td>
-                            <td class="text-end">
+                            <td class="text-end fw-bold" th:text="${m.quantidadeTotal}"></td>
+                            <td>
+                                <span th:if="${m.setorDestino != null}" th:text="${m.setorDestino.nome}"></span>
+                                <span th:if="${m.setorDestino == null}" class="placeholder-dash">—</span>
+                            </td>
+                            <td>
+                                <span th:if="${m.retiradoPor != null}" class="small"
+                                      th:text="${m.retiradoPor}"></span>
+                                <span th:if="${m.retiradoPor == null}" class="placeholder-dash">—</span>
+                            </td>
+                            <td>
+                                <span th:replace="~{fragments/status :: pill(${m.status.name()})}"></span>
+                            </td>
+                            <td class="text-end" onclick="event.stopPropagation();">
+                                <a th:href="@{|/movimentacoes/${m.id}|}"
+                                   class="btn btn-sm btn-outline-secondary"
+                                   title="Ver itens da movimentação">
+                                    <i class="bi bi-eye"></i>
+                                </a>
                                 <form th:if="${m.status.name() == 'PENDENTE_APROVACAO'}"
                                       th:action="@{|/movimentacoes/${m.id}/status|}" method="post" class="d-inline">
                                     <input type="hidden" name="status" value="APROVADO">
@@ -86,15 +156,17 @@
                                 </form>
                             </td>
                         </tr>
-                        <tr th:if="${#lists.isEmpty(movimentacoes)}">
+                        <tr th:if="${page.empty}">
                             <td colspan="9" class="empty-state">
                                 <i class="bi bi-clock-history d-block mb-2"></i>
-                                Nenhuma movimentação registrada.
+                                Nenhuma movimentação encontrada com os filtros atuais.
                             </td>
                         </tr>
                         </tbody>
                     </table>
                 </div>
+
+                <div th:replace="~{fragments/pagination :: paginacao(${page}, '/movimentacoes')}"></div>
             </div>
 
         </div>

@@ -66,7 +66,8 @@
                         <h6 class="text-muted text-uppercase small mb-0" style="letter-spacing:.05em;">
                             Itens solicitados
                         </h6>
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="btn-adicionar-item">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btn-adicionar-item"
+                                data-repeater-add="#tabela-itens tbody">
                             <i class="bi bi-plus-lg"></i> Adicionar item
                         </button>
                     </div>
@@ -81,8 +82,8 @@
                                 <th style="width:10%"></th>
                             </tr>
                             </thead>
-                            <tbody>
-                            <tr class="linha-item">
+                            <tbody data-repeater>
+                            <tr class="linha-item" data-repeater-item>
                                 <td class="position-relative">
                                     <input type="text" class="form-control busca-material"
                                            placeholder="Digite para buscar o material..." autocomplete="off" required>
@@ -94,7 +95,8 @@
                                 <td><input type="number" name="itemValorUnitario" step="0.01" min="0"
                                            class="form-control" value="0"></td>
                                 <td>
-                                    <button type="button" class="btn btn-sm btn-outline-danger btn-remover">
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-remover"
+                                            data-repeater-remove>
                                         <i class="bi bi-x-lg"></i>
                                     </button>
                                 </td>
@@ -142,80 +144,68 @@
         tipoSelect.addEventListener('change', aplicarRegrasDoTipo);
         aplicarRegrasDoTipo();
 
+        // ---- Autocomplete de material ---------------------------------
+        // O catálogo tem milhares de materiais: nunca carregamos tudo de
+        // uma vez num <select> (isso travava o navegador ao abrir esta
+        // tela). Em vez disso, buscamos no servidor conforme se digita.
+        // Delegação de eventos no tbody: linhas novas são clonadas pelo
+        // repeater.js genérico, que não sabe nada deste autocomplete.
         const tbody = document.querySelector('#tabela-itens tbody');
-
-        // ---- Autocomplete de material -------------------------------------
-        // O catálogo tem milhares de materiais: nunca carregamos tudo de uma
-        // vez (isso travava o navegador ao abrir esta tela). Em vez disso,
-        // buscamos no servidor conforme o usuário digita.
         let debounceId = null;
 
-        function ligarAutocomplete(linha) {
-            const busca = linha.querySelector('.busca-material');
+        function limparResultados(linha) {
+            const resultados = linha.querySelector('.resultado-busca');
+            resultados.innerHTML = '';
+            resultados.classList.add('d-none');
+        }
+
+        tbody.addEventListener('input', (ev) => {
+            const busca = ev.target.closest('.busca-material');
+            if (!busca) return;
+            const linha = busca.closest('.linha-item');
             const idInput = linha.querySelector('.id-material');
             const resultados = linha.querySelector('.resultado-busca');
 
-            function limparResultados() {
+            idInput.value = '';
+            const termo = busca.value.trim();
+            clearTimeout(debounceId);
+            if (termo.length < 2) {
+                limparResultados(linha);
+                return;
+            }
+            debounceId = setTimeout(async () => {
+                const resp = await fetch('/materiais/buscar?q=' + encodeURIComponent(termo));
+                const itens = resp.ok ? await resp.json() : [];
                 resultados.innerHTML = '';
-                resultados.classList.add('d-none');
-            }
-
-            function selecionar(item) {
-                idInput.value = item.id;
-                busca.value = item.unidadeMedida ? `${item.nome} (${item.unidadeMedida})` : item.nome;
-                limparResultados();
-            }
-
-            busca.addEventListener('input', () => {
-                idInput.value = '';
-                const termo = busca.value.trim();
-                clearTimeout(debounceId);
-                if (termo.length < 2) {
-                    limparResultados();
+                if (itens.length === 0) {
+                    resultados.classList.add('d-none');
                     return;
                 }
-                debounceId = setTimeout(async () => {
-                    const resp = await fetch('/materiais/buscar?q=' + encodeURIComponent(termo));
-                    const itens = resp.ok ? await resp.json() : [];
-                    resultados.innerHTML = '';
-                    if (itens.length === 0) {
-                        resultados.classList.add('d-none');
-                        return;
-                    }
-                    itens.forEach(item => {
-                        const opcao = document.createElement('button');
-                        opcao.type = 'button';
-                        opcao.className = 'list-group-item list-group-item-action py-1';
-                        opcao.textContent = item.unidadeMedida ? `${item.nome} (${item.unidadeMedida})` : item.nome;
-                        opcao.addEventListener('click', () => selecionar(item));
-                        resultados.appendChild(opcao);
+                itens.forEach(item => {
+                    const opcao = document.createElement('button');
+                    opcao.type = 'button';
+                    opcao.className = 'list-group-item list-group-item-action py-1';
+                    opcao.textContent = item.unidadeMedida ? `${item.nome} (${item.unidadeMedida})` : item.nome;
+                    opcao.addEventListener('click', () => {
+                        idInput.value = item.id;
+                        busca.value = item.unidadeMedida ? `${item.nome} (${item.unidadeMedida})` : item.nome;
+                        limparResultados(linha);
                     });
-                    resultados.classList.remove('d-none');
-                }, 250);
-            });
-
-            busca.addEventListener('blur', () => setTimeout(limparResultados, 150));
-        }
-
-        document.querySelectorAll('.linha-item').forEach(ligarAutocomplete);
-
-        document.getElementById('btn-adicionar-item').addEventListener('click', () => {
-            const novaLinha = tbody.querySelector('.linha-item').cloneNode(true);
-            novaLinha.querySelectorAll('input[type="number"]').forEach(i => i.value = i.name === 'itemValorUnitario' ? '0' : '');
-            novaLinha.querySelector('.busca-material').value = '';
-            novaLinha.querySelector('.id-material').value = '';
-            novaLinha.querySelector('.resultado-busca').innerHTML = '';
-            tbody.appendChild(novaLinha);
-            ligarAutocomplete(novaLinha);
+                    resultados.appendChild(opcao);
+                });
+                resultados.classList.remove('d-none');
+            }, 250);
         });
-        tbody.addEventListener('click', (ev) => {
-            if (ev.target.closest('.btn-remover')) {
-                const linhas = tbody.querySelectorAll('.linha-item');
-                if (linhas.length > 1) ev.target.closest('tr').remove();
-            }
+
+        tbody.addEventListener('focusout', (ev) => {
+            const busca = ev.target.closest('.busca-material');
+            if (!busca) return;
+            const linha = busca.closest('.linha-item');
+            setTimeout(() => limparResultados(linha), 150);
         });
     })();
 </script>
+<script th:src="@{/js/repeater.js}" defer></script>
 <th:block th:replace="~{fragments/layout :: scripts}"></th:block>
 </body>
 </html>

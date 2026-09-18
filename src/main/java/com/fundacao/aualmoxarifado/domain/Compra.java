@@ -23,7 +23,11 @@ import java.util.List;
  *   - RN10: COMPRA_REALIZADA do tipo DIRETA gera saída registrada para o setor solicitante.
  */
 @Entity
-@Table(name = "compra")
+@Table(name = "compra", indexes = {
+        // status alimenta a fila RF15; data_solicitacao é a ordenação de todas as listagens.
+        @Index(name = "idx_compra_status",           columnList = "status"),
+        @Index(name = "idx_compra_data_solicitacao", columnList = "data_solicitacao")
+})
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Compra {
 

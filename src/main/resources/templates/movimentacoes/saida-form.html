@@ -5,55 +5,83 @@
 <div class="app-shell">
     <aside th:replace="~{fragments/layout :: sidebar('saida-nova')}"></aside>
     <main class="app-main">
-        <header th:replace="~{fragments/layout :: topbar('Nova saída de material', 'Retirada de itens do estoque para um setor (RF06)')}"></header>
+        <header th:replace="~{fragments/layout :: topbar('Nova saída de material',
+                              'Selecione o setor e adicione um ou mais itens para retirada (RF06)')}"></header>
 
         <div class="app-content">
 
-            <div class="alert alert-danger d-flex align-items-start gap-2"
-                 th:if="${erro}">
+            <div class="alert alert-danger d-flex align-items-start gap-2" th:if="${erro}">
                 <i class="bi bi-exclamation-circle fs-5"></i>
                 <span th:text="${erro}"></span>
             </div>
 
-            <form th:action="@{/movimentacoes/saida}" th:object="${movimentacao}" method="post" class="card">
+            <form th:action="@{/movimentacoes/saida}" method="post" class="card">
                 <div class="card-pad">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label">Data</label>
-                            <input type="datetime-local" class="form-control" th:field="*{data}">
-                        </div>
 
-                        <div class="col-md-8 position-relative">
-                            <label class="form-label">Material *</label>
-                            <input type="text" id="busca-material" class="form-control"
-                                   placeholder="Digite para buscar o material..." autocomplete="off" required>
-                            <input type="hidden" name="materialId" id="id-material">
-                            <div class="list-group" id="resultado-busca-material"
-                                 style="position:absolute; z-index:20; max-height:220px; overflow-y:auto; width:100%;"></div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <label class="form-label">Quantidade *</label>
-                            <input type="number" min="1" class="form-control" th:field="*{quantidade}" required>
-                        </div>
-
-                        <div class="col-md-8">
-                            <label class="form-label">
-                                Setor de destino <span class="text-danger">*</span>
-                            </label>
+                    <!-- Cabeçalho da saída -->
+                    <h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.05em;">
+                        Cabeçalho
+                    </h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Setor de destino *</label>
                             <select name="setorId" class="form-select" required>
                                 <option value="">— Selecione o setor —</option>
                                 <option th:each="s : ${setores}"
                                         th:value="${s.id}"
+                                        th:selected="${setorIdSelecionado != null and setorIdSelecionado == s.id}"
                                         th:text="${s.nome + (s.codigoCentroCusto != null ? ' [' + s.codigoCentroCusto + ']' : '')}"></option>
                             </select>
-                            <div class="form-text">Obrigatório por força da regra RN03.</div>
+                            <div class="form-text">Obrigatório (RN03).</div>
                         </div>
-
-                        <div class="col-12">
+                        <div class="col-md-6">
                             <label class="form-label">Quem retirou</label>
-                            <input type="text" class="form-control" th:field="*{retiradoPor}"
+                            <input type="text" name="retiradoPor" class="form-control"
+                                   th:value="${retiradoPorInformado}"
                                    placeholder="Nome do responsável pela retirada">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Observação</label>
+                            <textarea name="observacao" rows="2" class="form-control"
+                                      th:text="${observacaoInformada}"></textarea>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <!-- Itens -->
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h6 class="text-muted text-uppercase small mb-0" style="letter-spacing:.05em;">
+                            Itens da saída
+                        </h6>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="btn-add-item"
+                                data-repeater-add="#itens-container">
+                            <i class="bi bi-plus-lg"></i> Adicionar item
+                        </button>
+                    </div>
+
+                    <div id="itens-container" data-repeater
+                         data-repeater-template="#item-template" data-repeater-last="clear">
+                        <!-- Linha 0 (padrão, sempre existe) -->
+                        <div class="row g-2 align-items-end item-row mb-2" data-repeater-item>
+                            <div class="col-md-8 position-relative">
+                                <label class="form-label small mb-1">Material *</label>
+                                <input type="text" class="form-control busca-material"
+                                       placeholder="Digite para buscar o material..." autocomplete="off" required>
+                                <input type="hidden" name="materialIds" class="id-material">
+                                <div class="list-group resultado-busca position-absolute w-100 shadow-sm"
+                                     style="z-index:20; max-height:220px; overflow-y:auto;"></div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small mb-1">Quantidade *</label>
+                                <input type="number" min="1" name="quantidades" class="form-control" required>
+                            </div>
+                            <div class="col-md-1 d-flex">
+                                <button type="button" class="btn btn-outline-danger w-100 btn-remove-item"
+                                        data-repeater-remove title="Remover item">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -61,7 +89,7 @@
                         <i class="bi bi-info-circle fs-5"></i>
                         <span>
                             A saída nasce com status <strong>PENDENTE_APROVACAO</strong> (RN04).
-                            O estoque só será debitado após a aprovação do gestor.
+                            O estoque dos materiais só será debitado após a aprovação do gestor.
                         </span>
                     </div>
 
@@ -78,26 +106,57 @@
     </main>
 </div>
 
+<!-- Template hidden para nova linha de item (clonado pelo JS) -->
+<template id="item-template">
+    <div class="row g-2 align-items-end item-row mb-2" data-repeater-item>
+        <div class="col-md-8 position-relative">
+            <label class="form-label small mb-1">Material *</label>
+            <input type="text" class="form-control busca-material"
+                   placeholder="Digite para buscar o material..." autocomplete="off" required>
+            <input type="hidden" name="materialIds" class="id-material">
+            <div class="list-group resultado-busca position-absolute w-100 shadow-sm"
+                 style="z-index:20; max-height:220px; overflow-y:auto;"></div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small mb-1">Quantidade *</label>
+            <input type="number" min="1" name="quantidades" class="form-control" required>
+        </div>
+        <div class="col-md-1 d-flex">
+            <button type="button" class="btn btn-outline-danger w-100 btn-remove-item"
+                    data-repeater-remove title="Remover item">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    </div>
+</template>
+
 <script>
     (function () {
         // Autocomplete de material — o catálogo tem milhares de itens, então
         // nunca carregamos tudo num único <select> (isso travava o navegador
         // ao abrir esta tela). A busca é feita no servidor conforme se digita.
-        const busca = document.getElementById('busca-material');
-        const idInput = document.getElementById('id-material');
-        const resultados = document.getElementById('resultado-busca-material');
+        // Delegação de eventos no container: linhas novas são clonadas pelo
+        // repeater.js genérico (a partir do <template>), que não sabe nada
+        // deste autocomplete.
+        const container = document.getElementById('itens-container');
         let debounceId = null;
 
-        function limparResultados() {
-            resultados.innerHTML = '';
+        function limparResultados(linha) {
+            linha.querySelector('.resultado-busca').innerHTML = '';
         }
 
-        busca.addEventListener('input', () => {
+        container.addEventListener('input', (ev) => {
+            const busca = ev.target.closest('.busca-material');
+            if (!busca) return;
+            const linha = busca.closest('.item-row');
+            const idInput = linha.querySelector('.id-material');
+            const resultados = linha.querySelector('.resultado-busca');
+
             idInput.value = '';
             const termo = busca.value.trim();
             clearTimeout(debounceId);
             if (termo.length < 2) {
-                limparResultados();
+                limparResultados(linha);
                 return;
             }
             debounceId = setTimeout(async () => {
@@ -112,16 +171,21 @@
                     opcao.addEventListener('click', () => {
                         idInput.value = item.id;
                         busca.value = `${item.nome} (saldo: ${item.estoqueAtual})`;
-                        limparResultados();
+                        limparResultados(linha);
                     });
                     resultados.appendChild(opcao);
                 });
             }, 250);
         });
 
-        busca.addEventListener('blur', () => setTimeout(limparResultados, 150));
+        container.addEventListener('focusout', (ev) => {
+            const busca = ev.target.closest('.busca-material');
+            if (!busca) return;
+            setTimeout(() => limparResultados(busca.closest('.item-row')), 150);
+        });
     })();
 </script>
 <th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+<script th:src="@{/js/repeater.js}" defer></script>
 </body>
 </html>

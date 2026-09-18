@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<!--
+  Pill de status parametrizado:
+    <span th:replace="~{fragments/status :: pill(${m.status.name()})}"></span>
+  As cores (claro/escuro) vêm de app.css, via classe 'status-' + nome em minúsculas.
+-->
+<span th:fragment="pill(status)" class="status-pill"
+      th:classappend="'status-' + ${#strings.toLowerCase(status)}"
+      th:text="${status}"></span>
+</html>

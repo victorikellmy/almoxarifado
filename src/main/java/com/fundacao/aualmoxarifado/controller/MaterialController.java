@@ -7,6 +7,9 @@ import com.fundacao.aualmoxarifado.repository.SubcategoriaRepository;
 import com.fundacao.aualmoxarifado.service.MaterialService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -26,9 +29,35 @@ public class MaterialController {
     private final MaterialRepository materialRepository;
 
     @GetMapping
-    public String listar(Model model) {
-        model.addAttribute("materiais", materialService.listar());
-        model.addAttribute("alertas", materialService.alertasDeEstoque()); // RN06
+    public String listar(
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) String sku,
+            @RequestParam(required = false) Long areaId,
+            @RequestParam(required = false) Long subcategoriaId,
+            @RequestParam(required = false) Boolean emAlerta,
+            @PageableDefault(size = 20, sort = "nome", direction = Sort.Direction.ASC)
+            Pageable pageable,
+            Model model) {
+
+        var page = materialService.listar(nome, sku, subcategoriaId, areaId, emAlerta, pageable);
+
+        model.addAttribute("page", page);
+        // RN06 — a tela usa só o número; COUNT no banco em vez de materializar a lista.
+        model.addAttribute("qtdAlertas", materialService.contarAlertasDeEstoque());
+        model.addAttribute("areas", areaRepository.findAllByOrderByNomeAsc());
+        // Subcategorias só fazem sentido quando uma área está selecionada — evita
+        // dropdown de centenas de itens. O JS do template recarrega via AJAX
+        // quando a área muda (endpoint já existente: /subcategorias/api/por-area/{areaId}).
+        if (areaId != null) {
+            model.addAttribute("subcategorias",
+                    subcategoriaRepository.findByAreaIdOrderByNomeAsc(areaId));
+        }
+        // Filtros selecionados para a UI manter o estado.
+        model.addAttribute("filtroNome", nome);
+        model.addAttribute("filtroSku", sku);
+        model.addAttribute("filtroAreaId", areaId);
+        model.addAttribute("filtroSubcategoriaId", subcategoriaId);
+        model.addAttribute("filtroEmAlerta", emAlerta);
         return "materiais/lista";
     }
 

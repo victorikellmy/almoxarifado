@@ -2,6 +2,7 @@ package com.fundacao.aualmoxarifado.service;
 
 import com.fundacao.aualmoxarifado.domain.PerfilUsuario;
 import com.fundacao.aualmoxarifado.domain.Usuario;
+import com.fundacao.aualmoxarifado.dto.request.TrocarSenhaRequest;
 import com.fundacao.aualmoxarifado.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.User;
@@ -130,6 +131,29 @@ public class UsuarioService implements UserDetailsService {
 
         u.setAtivo(!Boolean.TRUE.equals(u.getAtivo()));
         return usuarioRepository.save(u);
+    }
+
+    /**
+     * Troca de senha feita pelo próprio usuário logado (/minha-conta/senha).
+     *
+     * Diferente do {@link #salvar}, exige a senha ATUAL: sem isso, uma sessão
+     * esquecida aberta permitiria a qualquer um trocar a credencial da conta.
+     */
+    @Transactional
+    public void trocarSenha(String username, TrocarSenhaRequest req) {
+        Usuario u = usuarioRepository.findByUsernameIgnoreCase(username)
+                .orElseThrow(() -> new IllegalArgumentException("Usuário não encontrado."));
+
+        if (!passwordEncoder.matches(req.senhaAtual(), u.getSenhaHash())) {
+            throw new IllegalArgumentException("Senha atual incorreta.");
+        }
+        if (!req.novaSenha().equals(req.confirmarSenha())) {
+            throw new IllegalArgumentException("Confirmação de senha não confere.");
+        }
+        validarSenha(req.novaSenha());
+
+        u.setSenhaHash(passwordEncoder.encode(req.novaSenha()));
+        usuarioRepository.save(u);
     }
 
     private void validarSenha(String senha) {

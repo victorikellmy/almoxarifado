@@ -3,6 +3,7 @@ package com.fundacao.aualmoxarifado.repository;
 import com.fundacao.aualmoxarifado.domain.Area;
 import com.fundacao.aualmoxarifado.domain.Subcategoria;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -13,7 +14,17 @@ import java.util.Optional;
 
 public interface SubcategoriaRepository extends JpaRepository<Subcategoria, Long> {
 
+    /**
+     * Listagem da tela de subcategorias. A Área vem no mesmo SELECT: com
+     * {@code open-in-view=false} o Thymeleaf renderiza fora da sessão e não
+     * conseguiria inicializar o proxy lazy de {@code area}.
+     */
+    @Override
+    @EntityGraph(attributePaths = "area")
+    List<Subcategoria> findAll();
+
     /** Subcategorias de uma Área — alimenta o dropdown em cascata no form de Material. */
+    @EntityGraph(attributePaths = "area")
     List<Subcategoria> findByAreaIdOrderByNomeAsc(Long areaId);
 
     /** Validação de unicidade composta (RN11): mesma sigla na mesma área. */

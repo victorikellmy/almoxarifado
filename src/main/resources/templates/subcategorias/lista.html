@@ -56,11 +56,33 @@
             </div>
 
             <div class="card table-card">
-                <div class="table-card-head">
+                <div class="table-card-head d-flex align-items-center justify-content-between flex-wrap gap-2">
                     <div>
                         <h5 class="mb-0">Subcategorias cadastradas</h5>
-                        <small class="text-muted"><span th:text="${#lists.size(subcategorias)}"></span> registro(s)</small>
+                        <small class="text-muted">
+                            <span th:text="${#lists.size(subcategorias)}"></span> registro(s)
+                            <span th:if="${areaSelecionada != null}" class="ms-1">
+                                · filtradas por área
+                            </span>
+                        </small>
                     </div>
+
+                    <!-- Filtro por Área -->
+                    <form method="get" th:action="@{/subcategorias}" class="d-flex align-items-center gap-2">
+                        <label for="filtro-area" class="form-label small mb-0 text-muted">Filtrar por área:</label>
+                        <select id="filtro-area" name="areaId" class="form-select form-select-sm"
+                                style="min-width:220px;" onchange="this.form.submit()">
+                            <option value="">Todas as áreas</option>
+                            <option th:each="a : ${areas}"
+                                    th:value="${a.id}"
+                                    th:selected="${areaSelecionada != null and areaSelecionada == a.id}"
+                                    th:text="${a.sigla + ' — ' + a.nome}"></option>
+                        </select>
+                        <a th:if="${areaSelecionada != null}" th:href="@{/subcategorias}"
+                           class="btn btn-sm btn-outline-secondary" title="Limpar filtro">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                    </form>
                 </div>
                 <div class="table-responsive">
                     <table class="table">
@@ -75,20 +97,24 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr th:each="s : ${subcategorias}">
+                        <tr th:each="s : ${subcategorias}" th:with="area=${s.area}">
                             <td class="text-muted" th:text="${s.id}"></td>
                             <td>
-                                <span class="badge bg-primary me-1" th:text="${s.area.sigla}"></span>
-                                <span class="text-muted small" th:text="${s.area.nome}"></span>
+                                <span class="badge bg-primary me-1" th:text="${area.sigla}"></span>
+                                <span class="text-muted small" th:text="${area.nome}"></span>
                             </td>
                             <td><span class="badge bg-info" th:text="${s.sigla}"></span></td>
                             <td class="fw-semibold" th:text="${s.nome}"></td>
                             <td class="text-end">
-                                <code th:text="${s.area.sigla + '-' + s.sigla + '-'
-                                                + #strings.replace(#strings.rightPad(s.proximoSequencial, 5, '0'),
-                                                                   ' ', '0')}"></code>
+                                <code th:text="${area.sigla + '-' + s.sigla + '-'
+                                                + #numbers.formatInteger(s.proximoSequencial != null ? s.proximoSequencial : 1, 5, 'NONE')}"></code>
                             </td>
                             <td class="text-end">
+                                <a th:href="@{|/subcategorias/${s.id}/editar|}"
+                                   class="btn btn-sm btn-outline-primary"
+                                   title="Editar nome/descrição">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
                                 <form th:action="@{|/subcategorias/${s.id}/excluir|}" method="post" class="d-inline"
                                       onsubmit="return confirm('Excluir esta subcategoria?');">
                                     <button class="btn btn-sm btn-outline-danger">

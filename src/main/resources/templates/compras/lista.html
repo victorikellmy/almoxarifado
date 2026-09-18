@@ -33,7 +33,7 @@
                 <div class="table-card-head">
                     <div>
                         <h5 class="mb-0" th:text="${titulo}"></h5>
-                        <small class="text-muted"><span th:text="${#lists.size(compras)}"></span> registro(s)</small>
+                        <small class="text-muted"><span th:text="${page.totalElements}"></span> registro(s)</small>
                     </div>
                 </div>
                 <div class="table-responsive">
@@ -103,6 +103,9 @@
                         </tbody>
                     </table>
                 </div>
+
+                <div th:replace="~{fragments/pagination ::
+                                  paginacao(${page}, ${filtro == 'aguardando' ? '/compras/aguardando' : '/compras'})}"></div>
             </div>
 
         </div>

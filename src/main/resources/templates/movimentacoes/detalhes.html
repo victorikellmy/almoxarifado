@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Detalhes da movimentação')}"></head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('movimentacoes')}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout ::
+                              topbar('Movimentação #' + ${movimentacao.id},
+                                     'Cabeçalho e itens enviados')}"></header>
+
+        <div class="app-content">
+
+            <div class="d-flex align-items-center justify-content-between mb-3">
+                <a th:href="@{/movimentacoes}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Voltar para a lista
+                </a>
+                <div class="d-flex gap-2">
+                    <a sec:authorize="hasRole('ADMIN')"
+                       th:href="@{/auditoria(entidade='Movimentacao', entidadeId=${movimentacao.id})}"
+                       class="btn btn-outline-secondary"
+                       title="Ver trilha de auditoria desta movimentação">
+                        <i class="bi bi-shield-check"></i> Ver auditoria
+                    </a>
+                    <form th:if="${movimentacao.status.name() == 'PENDENTE_APROVACAO'}"
+                          th:action="@{|/movimentacoes/${movimentacao.id}/status|}" method="post">
+                        <input type="hidden" name="status" value="APROVADO">
+                        <button class="btn btn-primary"><i class="bi bi-check-circle"></i> Aprovar</button>
+                    </form>
+                    <form th:if="${movimentacao.status.name() == 'APROVADO'}"
+                          th:action="@{|/movimentacoes/${movimentacao.id}/status|}" method="post">
+                        <input type="hidden" name="status" value="ENTREGUE">
+                        <button class="btn btn-success"><i class="bi bi-truck"></i> Marcar como entregue</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Cabeçalho -->
+            <div class="card mb-3">
+                <div class="card-pad">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <div class="text-muted small text-uppercase" style="letter-spacing:.05em;">Tipo</div>
+                            <div class="mt-1">
+                                <span th:if="${movimentacao.tipo.name() == 'ENTRADA'}" class="badge bg-success">
+                                    <i class="bi bi-box-arrow-in-down"></i> Entrada
+                                </span>
+                                <span th:if="${movimentacao.tipo.name() == 'SAIDA'}" class="badge bg-info">
+                                    <i class="bi bi-box-arrow-up"></i> Saída
+                                </span>
+                                <span th:if="${movimentacao.tipo.name() == 'COMPRA_DIRETA'}" class="badge bg-primary">
+                                    <i class="bi bi-cart3"></i> Compra direta
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-muted small text-uppercase" style="letter-spacing:.05em;">Status</div>
+                            <div class="mt-1">
+                                <span th:replace="~{fragments/status :: pill(${movimentacao.status.name()})}"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-muted small text-uppercase" style="letter-spacing:.05em;">Data</div>
+                            <div class="mt-1" th:text="${#temporals.format(movimentacao.data, 'dd/MM/yyyy HH:mm')}"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-muted small text-uppercase" style="letter-spacing:.05em;">Quantidade total</div>
+                            <div class="mt-1 fs-4 fw-bold" th:text="${movimentacao.quantidadeTotal}"></div>
+                        </div>
+
+                        <div class="col-md-4" th:if="${movimentacao.setorDestino != null}">
+                            <div class="text-muted small text-uppercase" style="letter-spacing:.05em;">Setor destino</div>
+                            <div class="mt-1 fw-semibold" th:text="${movimentacao.setorDestino.nome}"></div>
+                            <div class="text-muted small"
+                                 th:if="${movimentacao.setorDestino.codigoCentroCusto != null}"
+                                 th:text="'CC ' + ${movimentacao.setorDestino.codigoCentroCusto}"></div>
+                        </div>
+                        <div class="col-md-4" th:if="${movimentacao.retiradoPor != null}">
+                            <div class="text-muted small text-uppercase" style="letter-spacing:.05em;">Retirado por</div>
+                            <div class="mt-1" th:text="${movimentacao.retiradoPor}"></div>
+                        </div>
+                        <div class="col-md-4" th:if="${movimentacao.fornecedor != null}">
+                            <div class="text-muted small text-uppercase" style="letter-spacing:.05em;">Fornecedor / NF</div>
+                            <div class="mt-1" th:text="${movimentacao.fornecedor}"></div>
+                            <div class="text-muted small"
+                                 th:if="${movimentacao.notaFiscal != null}"
+                                 th:text="'NF ' + ${movimentacao.notaFiscal}"></div>
+                        </div>
+                        <div class="col-12" th:if="${movimentacao.observacao != null}">
+                            <div class="text-muted small text-uppercase" style="letter-spacing:.05em;">Observação</div>
+                            <div class="mt-1 small" th:text="${movimentacao.observacao}"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Itens -->
+            <div class="card table-card">
+                <div class="table-card-head">
+                    <div>
+                        <h5 class="mb-0">Itens enviados</h5>
+                        <small class="text-muted">
+                            <span th:text="${#lists.size(movimentacao.itens)}"></span> item(ns) na movimentação
+                        </small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th style="width:60px">#</th>
+                            <th>SKU</th>
+                            <th>Material</th>
+                            <th>Área / Sub</th>
+                            <th>Unidade</th>
+                            <th class="text-end">Quantidade</th>
+                            <th class="text-end">Valor unit.</th>
+                            <th class="text-end">Subtotal</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="i, it : ${movimentacao.itens}"
+                            th:with="mat=${i.material}, sub=${i.material.subcategoria}">
+                            <td class="text-muted" th:text="${it.count}"></td>
+                            <td><code th:text="${mat.codigoSku} ?: '—'"></code></td>
+                            <td class="fw-semibold" th:text="${mat.nome}"></td>
+                            <td>
+                                <span th:if="${sub}">
+                                    <span class="badge bg-primary me-1"
+                                          th:text="${sub.area.sigla}"></span>
+                                    <span class="badge bg-info"
+                                          th:text="${sub.sigla}"></span>
+                                </span>
+                            </td>
+                            <td class="text-muted" th:text="${mat.unidadeMedida} ?: '—'"></td>
+                            <td class="text-end fw-bold" th:text="${i.quantidade}"></td>
+                            <td class="text-end"
+                                th:text="${i.valorUnitario != null ? 'R$ ' + #numbers.formatDecimal(i.valorUnitario, 1, 2) : '—'}"></td>
+                            <td class="text-end"
+                                th:text="${i.subtotal != null ? 'R$ ' + #numbers.formatDecimal(i.subtotal, 1, 2) : '—'}"></td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(movimentacao.itens)}">
+                            <td colspan="8" class="empty-state">
+                                <i class="bi bi-inbox d-block mb-2"></i>
+                                Esta movimentação não tem itens registrados.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+</div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<!--
+  Fragmentos compartilhados pelas telas de relatório (mensal, trimestral e anual).
+
+  Fragments:
+    exportBar(exportUrl, params)
+        Barra XLSX/CSV/PDF. exportUrl é o endpoint de export e params a
+        query string extra (ex.: |ano=${ano}&trimestre=${trimestre}|).
+
+    cardsResumoTipo(resumo, colClass)
+        Um stat-card por ResumoTipoDTO. colClass define a largura da coluna
+        ('col-md-4' no mensal/anual, 'col-md-3' no trimestral). Usar dentro
+        de um <div class="row">.
+
+    tabelaMeses(meses, totais, patternMes, labelTotal)
+        Tabela de comparativo/consolidado mês-a-mês. patternMes é o formato
+        do rótulo do mês ('MMMM' ou 'MMMM/yyyy'); totais é o
+        RelatorioService.TotaisMeses usado no rodapé; labelTotal é o texto
+        da linha de total.
+
+    tabelaGastoPorSetor(setores, labelItens, labelValor, badgeClass, msgVazio)
+        Tabela de gasto por setor / centro de custo.
+-->
+<body>
+
+<div class="btn-group w-100" th:fragment="exportBar(exportUrl, params)">
+    <a class="btn btn-outline-secondary"
+       th:href="@{${exportUrl + '?formato=XLSX&' + params}}">
+        <i class="bi bi-file-earmark-excel"></i> XLSX
+    </a>
+    <a class="btn btn-outline-secondary"
+       th:href="@{${exportUrl + '?formato=CSV&' + params}}">
+        CSV
+    </a>
+    <a class="btn btn-outline-secondary"
+       th:href="@{${exportUrl + '?formato=PDF&' + params}}">
+        PDF
+    </a>
+</div>
+
+<div th:fragment="cardsResumoTipo(resumo, colClass)"
+     th:each="r : ${resumo}" th:class="${colClass}">
+    <div class="stat-card">
+        <div class="stat-icon"
+             th:classappend="${r.tipo().name() == 'ENTRADA'} ? 'bg-success-soft'
+                          : (${r.tipo().name() == 'SAIDA'} ? 'bg-info-soft' : 'bg-brand')">
+            <i class="bi"
+               th:classappend="${r.tipo().name() == 'ENTRADA'} ? 'bi-box-arrow-in-down'
+                            : (${r.tipo().name() == 'SAIDA'} ? 'bi-box-arrow-up' : 'bi-cart3')"></i>
+        </div>
+        <div>
+            <p class="stat-label"
+               th:text="${r.tipo().name() == 'ENTRADA'} ? 'Entradas'
+                      : (${r.tipo().name() == 'SAIDA'} ? 'Saídas' : 'Compras diretas')"></p>
+            <p class="stat-value" th:text="${r.qtdMovimentacoes()}">0</p>
+            <p class="stat-hint">
+                <span th:text="${r.totalItens()}">0</span> itens ·
+                <span th:text="${'R$ ' + #numbers.formatDecimal(r.valorTotal(), 1, 'POINT', 2, 'COMMA')}">R$ 0,00</span>
+            </p>
+        </div>
+    </div>
+</div>
+
+<table class="table" th:fragment="tabelaMeses(meses, totais, patternMes, labelTotal)">
+    <thead>
+    <tr>
+        <th>Mês</th>
+        <th class="text-end">Entradas</th>
+        <th class="text-end">Saídas</th>
+        <th class="text-end">Compras diretas</th>
+        <th class="text-end">Total movs</th>
+        <th class="text-end">Total itens</th>
+        <th class="text-end">Valor entradas</th>
+        <th class="text-end">Valor saídas</th>
+        <th class="text-end">Valor compras</th>
+        <th class="text-end">Valor total</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="m : ${meses}">
+        <td class="fw-semibold"
+            th:text="${#strings.capitalize(#temporals.format(T(java.time.LocalDate).of(m.ano(), m.mes(), 1), patternMes))}"></td>
+        <td class="text-end" th:text="${m.qtdEntradas()}"></td>
+        <td class="text-end" th:text="${m.qtdSaidas()}"></td>
+        <td class="text-end" th:text="${m.qtdComprasDiretas()}"></td>
+        <td class="text-end fw-semibold" th:text="${m.qtdTotalMovimentacoes()}"></td>
+        <td class="text-end" th:text="${m.totalItens()}"></td>
+        <td class="text-end"
+            th:text="${'R$ ' + #numbers.formatDecimal(m.valorEntradas(), 1, 'POINT', 2, 'COMMA')}"></td>
+        <td class="text-end"
+            th:text="${'R$ ' + #numbers.formatDecimal(m.valorSaidas(), 1, 'POINT', 2, 'COMMA')}"></td>
+        <td class="text-end"
+            th:text="${'R$ ' + #numbers.formatDecimal(m.valorComprasDiretas(), 1, 'POINT', 2, 'COMMA')}"></td>
+        <td class="text-end fw-bold"
+            th:text="${'R$ ' + #numbers.formatDecimal(m.valorTotal(), 1, 'POINT', 2, 'COMMA')}"></td>
+    </tr>
+    </tbody>
+    <tfoot th:if="${not #lists.isEmpty(meses)}">
+    <tr class="fw-bold">
+        <td th:text="${labelTotal}">TOTAL</td>
+        <td class="text-end" th:text="${totais.qtdEntradas()}"></td>
+        <td class="text-end" th:text="${totais.qtdSaidas()}"></td>
+        <td class="text-end" th:text="${totais.qtdComprasDiretas()}"></td>
+        <td class="text-end" th:text="${totais.qtdTotalMovimentacoes()}"></td>
+        <td class="text-end" th:text="${totais.totalItens()}"></td>
+        <td class="text-end"
+            th:text="${'R$ ' + #numbers.formatDecimal(totais.valorEntradas(), 1, 'POINT', 2, 'COMMA')}"></td>
+        <td class="text-end"
+            th:text="${'R$ ' + #numbers.formatDecimal(totais.valorSaidas(), 1, 'POINT', 2, 'COMMA')}"></td>
+        <td class="text-end"
+            th:text="${'R$ ' + #numbers.formatDecimal(totais.valorComprasDiretas(), 1, 'POINT', 2, 'COMMA')}"></td>
+        <td class="text-end"
+            th:text="${'R$ ' + #numbers.formatDecimal(totais.valorTotal(), 1, 'POINT', 2, 'COMMA')}"></td>
+    </tr>
+    </tfoot>
+</table>
+
+<table class="table" th:fragment="tabelaGastoPorSetor(setores, labelItens, labelValor, badgeClass, msgVazio)">
+    <thead>
+    <tr>
+        <th style="width:60px">#</th>
+        <th>Centro de custo</th>
+        <th>Setor</th>
+        <th class="text-end" th:text="${labelItens}">Itens</th>
+        <th class="text-end" th:text="${labelValor}">Valor total</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="g, it : ${setores}">
+        <td class="text-muted" th:text="${it.count}"></td>
+        <td>
+            <span th:if="${g.codigoCentroCusto()}" class="badge" th:classappend="${badgeClass}"
+                  th:text="${g.codigoCentroCusto()}"></span>
+            <span th:unless="${g.codigoCentroCusto()}" class="text-muted">—</span>
+        </td>
+        <td class="fw-semibold" th:text="${g.nomeSetor()}"></td>
+        <td class="text-end" th:text="${g.totalQuantidade()}"></td>
+        <td class="text-end fw-bold"
+            th:text="${'R$ ' + #numbers.formatDecimal(g.valorTotal(), 1, 'POINT', 2, 'COMMA')}"></td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(setores)}">
+        <td colspan="5" class="empty-state">
+            <i class="bi bi-inbox d-block mb-2"></i>
+            <span th:text="${msgVazio}"></span>
+        </td>
+    </tr>
+    </tbody>
+</table>
+
+</body>
+</html>

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Auditoria')}"></head>
+<body>
+<div class="app-shell">
+    <aside th:replace="~{fragments/layout :: sidebar('auditoria')}"></aside>
+    <main class="app-main">
+        <header th:replace="~{fragments/layout :: topbar('Auditoria',
+                              'Trilha completa de operações sensíveis — quem fez, quando, sobre o quê')}"></header>
+
+        <div class="app-content">
+
+            <!-- Filtros -->
+            <div class="card mb-3">
+                <div class="card-body">
+                    <form method="get" action="/auditoria" class="row g-2 align-items-end">
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Usuário</label>
+                            <input type="text" name="usuario" class="form-control form-control-sm"
+                                   th:value="${filtroUsuario}" placeholder="login">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Ação</label>
+                            <select name="acao" class="form-select form-select-sm">
+                                <option value="">Todas</option>
+                                <option value="REGISTRAR_SAIDA"
+                                        th:selected="${filtroAcao?.name() == 'REGISTRAR_SAIDA'}">Registrar saída</option>
+                                <option value="ALTERAR_STATUS_MOVIMENTACAO"
+                                        th:selected="${filtroAcao?.name() == 'ALTERAR_STATUS_MOVIMENTACAO'}">Alterar status</option>
+                                <option value="REGISTRAR_ENTRADA"
+                                        th:selected="${filtroAcao?.name() == 'REGISTRAR_ENTRADA'}">Registrar entrada</option>
+                                <option value="REGISTRAR_COMPRA_DIRETA"
+                                        th:selected="${filtroAcao?.name() == 'REGISTRAR_COMPRA_DIRETA'}">Compra direta</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">Entidade</label>
+                            <select name="entidade" class="form-select form-select-sm">
+                                <option value="">Todas</option>
+                                <option value="Movimentacao"
+                                        th:selected="${filtroEntidade == 'Movimentacao'}">Movimentação</option>
+                                <option value="Material"
+                                        th:selected="${filtroEntidade == 'Material'}">Material</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label small text-muted mb-1">ID</label>
+                            <input type="number" name="entidadeId" class="form-control form-control-sm"
+                                   th:value="${filtroEntidadeId}" placeholder="—">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small text-muted mb-1">De</label>
+                            <input type="date" name="inicio" class="form-control form-control-sm"
+                                   th:value="${filtroInicio}">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label small text-muted mb-1">Até</label>
+                            <input type="date" name="fim" class="form-control form-control-sm"
+                                   th:value="${filtroFim}">
+                        </div>
+                        <div class="col-md-2 d-flex gap-2">
+                            <button class="btn btn-sm btn-primary flex-grow-1">
+                                <i class="bi bi-funnel"></i> Filtrar
+                            </button>
+                            <a href="/auditoria" class="btn btn-sm btn-outline-secondary" title="Limpar filtros">
+                                <i class="bi bi-x-lg"></i>
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card table-card">
+                <div class="table-card-head">
+                    <div>
+                        <h5 class="mb-0">Eventos</h5>
+                        <small class="text-muted">
+                            <span th:text="${page.totalElements}"></span> registro(s)
+                            <span th:if="${page.totalPages > 1}">
+                                — página <span th:text="${page.number + 1}"></span>
+                                de <span th:text="${page.totalPages}"></span>
+                            </span>
+                        </small>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th>Quando</th>
+                            <th>Usuário</th>
+                            <th>Ação</th>
+                            <th>Entidade</th>
+                            <th>Setor</th>
+                            <th>Detalhes</th>
+                            <th>Origem</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="log : ${page.content}">
+                            <td class="text-muted small text-nowrap">
+                                <a th:href="@{|/auditoria/${log.id}|}"
+                                   class="text-decoration-none"
+                                   th:text="${#temporals.format(log.timestamp, 'dd/MM/yyyy HH:mm:ss')}"></a>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary"
+                                      th:text="${log.usuario}"></span>
+                            </td>
+                            <td>
+                                <span class="badge bg-info" th:if="${log.acao.name() == 'REGISTRAR_SAIDA'}">
+                                    <i class="bi bi-box-arrow-up"></i> Saída
+                                </span>
+                                <span class="badge bg-primary" th:if="${log.acao.name() == 'ALTERAR_STATUS_MOVIMENTACAO'}">
+                                    <i class="bi bi-arrow-repeat"></i> Status
+                                </span>
+                                <span class="badge bg-success" th:if="${log.acao.name() == 'REGISTRAR_ENTRADA'}">
+                                    <i class="bi bi-box-arrow-in-down"></i> Entrada
+                                </span>
+                                <span class="badge bg-warning text-dark" th:if="${log.acao.name() == 'REGISTRAR_COMPRA_DIRETA'}">
+                                    <i class="bi bi-cart3"></i> Compra direta
+                                </span>
+                            </td>
+                            <td>
+                                <code class="small" th:text="${log.entidade}"></code>
+                                <span class="text-muted" th:if="${log.entidadeId != null}">
+                                    #<span th:text="${log.entidadeId}"></span>
+                                </span>
+                                <a th:if="${log.entidade == 'Movimentacao' and log.entidadeId != null}"
+                                   th:href="@{|/movimentacoes/${log.entidadeId}|}"
+                                   class="btn btn-sm btn-link p-0 ms-1"
+                                   title="Abrir movimentação">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </td>
+                            <td>
+                                <span th:if="${log.setor != null}" class="small" th:text="${log.setor}"></span>
+                                <span th:if="${log.setor == null}" class="placeholder-dash">—</span>
+                            </td>
+                            <td class="small text-muted" style="max-width: 380px;">
+                                <span th:text="${log.detalhes}"
+                                      th:title="${log.detalhes}"
+                                      style="display:inline-block; max-width:100%; overflow:hidden;
+                                             text-overflow:ellipsis; white-space:nowrap;"></span>
+                            </td>
+                            <td class="small text-muted">
+                                <span th:if="${log.ipOrigem != null}" th:text="${log.ipOrigem}"></span>
+                                <span th:if="${log.ipOrigem == null}" class="placeholder-dash">—</span>
+                                <i th:if="${log.idempotencyKey != null}"
+                                   class="bi bi-key-fill ms-1 text-info"
+                                   th:title="|Idempotency-Key: ${log.idempotencyKey}|"></i>
+                            </td>
+                        </tr>
+                        <tr th:if="${page.empty}">
+                            <td colspan="7" class="empty-state">
+                                <i class="bi bi-shield-check d-block mb-2"></i>
+                                Nenhum evento encontrado com os filtros atuais.
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div th:replace="~{fragments/pagination :: paginacao(${page}, '/auditoria')}"></div>
+            </div>
+
+        </div>
+    </main>
+</div>
+<th:block th:replace="~{fragments/layout :: scripts}"></th:block>
+</body>
+</html>

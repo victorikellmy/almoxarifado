@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<!--
+  Fragmento de paginação reutilizável.
+
+  Uso:
+    <div th:replace="~{fragments/pagination :: paginacao(${page}, '/auditoria')}"></div>
+
+  Parâmetros:
+    page    - Page<?> do Spring Data
+    baseUrl - URL base do endpoint paginado (ex.: '/movimentacoes')
+
+  Como preserva filtros: usa PaginationHelper para extrair os query params
+  atuais (exceto page/size) da requisição corrente. Não precisa enumerar
+  os filtros — qualquer endpoint paginado funciona sem mudança.
+
+  Janela móvel: ±2 páginas em volta da atual.
+-->
+<body>
+
+<nav th:fragment="paginacao(page, baseUrl)"
+     th:if="${page.totalPages > 1}"
+     th:with="extra=${@paginationHelper.extraQueryString(#httpServletRequest)}"
+     class="d-flex justify-content-between align-items-center p-3 border-top"
+     aria-label="Paginação">
+
+    <small class="text-muted">
+        Mostrando <span th:text="${page.numberOfElements}"></span> de
+        <span th:text="${page.totalElements}"></span> resultados
+    </small>
+
+    <!-- Janela [ini, fim] calculada antes do th:each: itera só as ±2 páginas
+         visíveis em vez de percorrer todas com th:if. O nav só renderiza com
+         totalPages > 1, então ini <= fim sempre vale para #numbers.sequence. -->
+    <ul class="pagination pagination-sm mb-0"
+        th:with="ini=${T(java.lang.Math).max(0, page.number - 2)},
+                 fim=${T(java.lang.Math).min(page.totalPages - 1, page.number + 2)}">
+        <li class="page-item" th:classappend="${page.first} ? 'disabled'">
+            <a class="page-link"
+               th:href="${baseUrl + '?page=' + (page.number - 1) + '&size=' + page.size + extra}"
+               aria-label="Página anterior">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+        </li>
+
+        <li th:each="i : ${#numbers.sequence(ini, fim)}"
+            class="page-item"
+            th:classappend="${i == page.number} ? 'active'">
+            <a class="page-link"
+               th:href="${baseUrl + '?page=' + i + '&size=' + page.size + extra}"
+               th:text="${i + 1}"></a>
+        </li>
+
+        <li class="page-item" th:classappend="${page.last} ? 'disabled'">
+            <a class="page-link"
+               th:href="${baseUrl + '?page=' + (page.number + 1) + '&size=' + page.size + extra}"
+               aria-label="Próxima página">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+    </ul>
+</nav>
+
+</body>
+</html>
