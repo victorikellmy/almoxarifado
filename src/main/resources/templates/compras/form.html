@@ -83,13 +83,12 @@
                             </thead>
                             <tbody>
                             <tr class="linha-item">
-                                <td>
-                                    <select name="itemMaterialId" class="form-select" required>
-                                        <option value="">— Selecione —</option>
-                                        <option th:each="m : ${materiais}"
-                                                th:value="${m.id}"
-                                                th:text="${m.nome + ' (' + m.unidadeMedida + ')'}"></option>
-                                    </select>
+                                <td class="position-relative">
+                                    <input type="text" class="form-control busca-material"
+                                           placeholder="Digite para buscar o material..." autocomplete="off" required>
+                                    <input type="hidden" name="itemMaterialId" class="id-material">
+                                    <div class="list-group resultado-busca position-absolute w-100 shadow-sm"
+                                         style="z-index:20; max-height:220px; overflow-y:auto;"></div>
                                 </td>
                                 <td><input type="number" name="itemQuantidade" min="1" class="form-control" required></td>
                                 <td><input type="number" name="itemValorUnitario" step="0.01" min="0"
@@ -144,11 +143,70 @@
         aplicarRegrasDoTipo();
 
         const tbody = document.querySelector('#tabela-itens tbody');
+
+        // ---- Autocomplete de material -------------------------------------
+        // O catálogo tem milhares de materiais: nunca carregamos tudo de uma
+        // vez (isso travava o navegador ao abrir esta tela). Em vez disso,
+        // buscamos no servidor conforme o usuário digita.
+        let debounceId = null;
+
+        function ligarAutocomplete(linha) {
+            const busca = linha.querySelector('.busca-material');
+            const idInput = linha.querySelector('.id-material');
+            const resultados = linha.querySelector('.resultado-busca');
+
+            function limparResultados() {
+                resultados.innerHTML = '';
+                resultados.classList.add('d-none');
+            }
+
+            function selecionar(item) {
+                idInput.value = item.id;
+                busca.value = item.unidadeMedida ? `${item.nome} (${item.unidadeMedida})` : item.nome;
+                limparResultados();
+            }
+
+            busca.addEventListener('input', () => {
+                idInput.value = '';
+                const termo = busca.value.trim();
+                clearTimeout(debounceId);
+                if (termo.length < 2) {
+                    limparResultados();
+                    return;
+                }
+                debounceId = setTimeout(async () => {
+                    const resp = await fetch('/materiais/buscar?q=' + encodeURIComponent(termo));
+                    const itens = resp.ok ? await resp.json() : [];
+                    resultados.innerHTML = '';
+                    if (itens.length === 0) {
+                        resultados.classList.add('d-none');
+                        return;
+                    }
+                    itens.forEach(item => {
+                        const opcao = document.createElement('button');
+                        opcao.type = 'button';
+                        opcao.className = 'list-group-item list-group-item-action py-1';
+                        opcao.textContent = item.unidadeMedida ? `${item.nome} (${item.unidadeMedida})` : item.nome;
+                        opcao.addEventListener('click', () => selecionar(item));
+                        resultados.appendChild(opcao);
+                    });
+                    resultados.classList.remove('d-none');
+                }, 250);
+            });
+
+            busca.addEventListener('blur', () => setTimeout(limparResultados, 150));
+        }
+
+        document.querySelectorAll('.linha-item').forEach(ligarAutocomplete);
+
         document.getElementById('btn-adicionar-item').addEventListener('click', () => {
             const novaLinha = tbody.querySelector('.linha-item').cloneNode(true);
-            novaLinha.querySelectorAll('input').forEach(i => i.value = i.name === 'itemValorUnitario' ? '0' : '');
-            novaLinha.querySelector('select').value = '';
+            novaLinha.querySelectorAll('input[type="number"]').forEach(i => i.value = i.name === 'itemValorUnitario' ? '0' : '');
+            novaLinha.querySelector('.busca-material').value = '';
+            novaLinha.querySelector('.id-material').value = '';
+            novaLinha.querySelector('.resultado-busca').innerHTML = '';
             tbody.appendChild(novaLinha);
+            ligarAutocomplete(novaLinha);
         });
         tbody.addEventListener('click', (ev) => {
             if (ev.target.closest('.btn-remover')) {

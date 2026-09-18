@@ -2,6 +2,7 @@ package com.fundacao.aualmoxarifado.controller;
 
 import com.fundacao.aualmoxarifado.domain.Material;
 import com.fundacao.aualmoxarifado.repository.AreaRepository;
+import com.fundacao.aualmoxarifado.repository.MaterialRepository;
 import com.fundacao.aualmoxarifado.repository.SubcategoriaRepository;
 import com.fundacao.aualmoxarifado.service.MaterialService;
 import jakarta.validation.Valid;
@@ -11,6 +12,9 @@ import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @Controller
 @RequestMapping("/materiais")
 @RequiredArgsConstructor
@@ -19,12 +23,35 @@ public class MaterialController {
     private final MaterialService materialService;
     private final AreaRepository areaRepository;
     private final SubcategoriaRepository subcategoriaRepository;
+    private final MaterialRepository materialRepository;
 
     @GetMapping
     public String listar(Model model) {
         model.addAttribute("materiais", materialService.listar());
         model.addAttribute("alertas", materialService.alertasDeEstoque()); // RN06
         return "materiais/lista";
+    }
+
+    /**
+     * Autocomplete usado pelos formulários de Pré-compra e Saída de estoque:
+     * o catálogo tem milhares de materiais, então nunca carregamos a lista
+     * inteira num {@code <select>} — o front pede aqui conforme o usuário
+     * digita, e a resposta já vem limitada a 20 resultados.
+     */
+    @GetMapping("/buscar")
+    @ResponseBody
+    public List<Map<String, Object>> buscar(@RequestParam(defaultValue = "") String q) {
+        if (q.isBlank()) {
+            return List.of();
+        }
+        return materialRepository.findTop20ByNomeContainingIgnoreCaseOrderByNomeAsc(q.trim())
+                .stream()
+                .map(m -> Map.<String, Object>of(
+                        "id", m.getId(),
+                        "nome", m.getNome(),
+                        "unidadeMedida", m.getUnidadeMedida() != null ? m.getUnidadeMedida() : "",
+                        "estoqueAtual", m.getEstoqueAtual()))
+                .toList();
     }
 
     @GetMapping("/novo")

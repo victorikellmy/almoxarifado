@@ -23,14 +23,13 @@
                             <input type="datetime-local" class="form-control" th:field="*{data}">
                         </div>
 
-                        <div class="col-md-8">
+                        <div class="col-md-8 position-relative">
                             <label class="form-label">Material *</label>
-                            <select name="materialId" class="form-select" required>
-                                <option value="">— Selecione —</option>
-                                <option th:each="m : ${materiais}"
-                                        th:value="${m.id}"
-                                        th:text="${m.nome + ' (saldo: ' + m.estoqueAtual + ')'}"></option>
-                            </select>
+                            <input type="text" id="busca-material" class="form-control"
+                                   placeholder="Digite para buscar o material..." autocomplete="off" required>
+                            <input type="hidden" name="materialId" id="id-material">
+                            <div class="list-group" id="resultado-busca-material"
+                                 style="position:absolute; z-index:20; max-height:220px; overflow-y:auto; width:100%;"></div>
                         </div>
 
                         <div class="col-md-4">
@@ -78,6 +77,51 @@
         </div>
     </main>
 </div>
+
+<script>
+    (function () {
+        // Autocomplete de material — o catálogo tem milhares de itens, então
+        // nunca carregamos tudo num único <select> (isso travava o navegador
+        // ao abrir esta tela). A busca é feita no servidor conforme se digita.
+        const busca = document.getElementById('busca-material');
+        const idInput = document.getElementById('id-material');
+        const resultados = document.getElementById('resultado-busca-material');
+        let debounceId = null;
+
+        function limparResultados() {
+            resultados.innerHTML = '';
+        }
+
+        busca.addEventListener('input', () => {
+            idInput.value = '';
+            const termo = busca.value.trim();
+            clearTimeout(debounceId);
+            if (termo.length < 2) {
+                limparResultados();
+                return;
+            }
+            debounceId = setTimeout(async () => {
+                const resp = await fetch('/materiais/buscar?q=' + encodeURIComponent(termo));
+                const itens = resp.ok ? await resp.json() : [];
+                resultados.innerHTML = '';
+                itens.forEach(item => {
+                    const opcao = document.createElement('button');
+                    opcao.type = 'button';
+                    opcao.className = 'list-group-item list-group-item-action py-1';
+                    opcao.textContent = `${item.nome} (saldo: ${item.estoqueAtual})`;
+                    opcao.addEventListener('click', () => {
+                        idInput.value = item.id;
+                        busca.value = `${item.nome} (saldo: ${item.estoqueAtual})`;
+                        limparResultados();
+                    });
+                    resultados.appendChild(opcao);
+                });
+            }, 250);
+        });
+
+        busca.addEventListener('blur', () => setTimeout(limparResultados, 150));
+    })();
+</script>
 <th:block th:replace="~{fragments/layout :: scripts}"></th:block>
 </body>
 </html>

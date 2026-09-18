@@ -34,7 +34,6 @@ public class MovimentacaoController {
     @GetMapping("/saida/nova")
     public String novaSaida(Model model) {
         model.addAttribute("movimentacao", new Movimentacao());
-        model.addAttribute("materiais", materialRepository.findAll());
         model.addAttribute("setores", setorRepository.findAll());
         return "movimentacoes/saida-form";
     }
@@ -59,7 +58,6 @@ public class MovimentacaoController {
             return "redirect:/movimentacoes";
         } catch (RuntimeException ex) {
             model.addAttribute("erro", ex.getMessage());
-            model.addAttribute("materiais", materialRepository.findAll());
             model.addAttribute("setores", setorRepository.findAll());
             model.addAttribute("movimentacao", movimentacao);
             return "movimentacoes/saida-form";

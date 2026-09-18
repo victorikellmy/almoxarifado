@@ -10,6 +10,14 @@ import java.util.Optional;
 
 public interface MaterialRepository extends JpaRepository<Material, Long> {
 
+    /**
+     * Autocomplete dos formulários que selecionam um material (pré-compra,
+     * saída de estoque). Nunca listar todos os materiais num único
+     * {@code <select>} — com o catálogo na casa dos milhares isso trava o
+     * navegador ao renderizar; por isso a busca já limita o resultado.
+     */
+    List<Material> findTop20ByNomeContainingIgnoreCaseOrderByNomeAsc(String nome);
+
     /** Importação em massa: localiza o material a ATUALIZAR quando a planilha traz o SKU. */
     Optional<Material> findByCodigoSku(String codigoSku);
 

@@ -1,7 +1,6 @@
 package com.fundacao.aualmoxarifado.controller;
 
 import com.fundacao.aualmoxarifado.domain.*;
-import com.fundacao.aualmoxarifado.repository.MaterialRepository;
 import com.fundacao.aualmoxarifado.repository.SetorRepository;
 import com.fundacao.aualmoxarifado.service.AnexoStorageService;
 import com.fundacao.aualmoxarifado.service.CompraService;
@@ -41,7 +40,6 @@ import java.util.List;
 public class CompraController {
 
     private final CompraService compraService;
-    private final MaterialRepository materialRepository;
     private final SetorRepository setorRepository;
     private final AnexoStorageService anexoStorageService;
 
@@ -182,7 +180,6 @@ public class CompraController {
 
     private void prepararFormulario(Model model, Compra compra) {
         model.addAttribute("compra", compra);
-        model.addAttribute("materiais", materialRepository.findAll());
         model.addAttribute("setores", setorRepository.findAll());
         model.addAttribute("tipos", TipoCompra.values());
     }
