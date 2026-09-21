@@ -38,6 +38,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
     // Migrations versionadas do schema PostgreSQL (src/main/resources/db/migration)
+    // No Boot 4 a autoconfiguração do Flyway vive num módulo próprio — sem ele
+    // as migrations não rodam no boot, mesmo com o flyway-core no classpath.
+    implementation 'org.springframework.boot:spring-boot-flyway'
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
 

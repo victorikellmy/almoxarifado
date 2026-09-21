@@ -125,6 +125,12 @@ public class SecurityConfig {
                     .requestMatchers("/actuator/health").permitAll()
                     // Estáticos ficam fora da cadeia — ver ignorarEstaticos().
                     .requestMatchers("/login").permitAll()
+                    // /error é o dispatch interno de erro do Spring Boot. Se ele
+                    // exigir login, qualquer 404/500 ANTES da autenticação (ex.:
+                    // favicon inexistente) vira a "página salva" do Spring
+                    // Security, e o usuário cai em /error?continue depois de
+                    // logar em vez de cair no dashboard.
+                    .requestMatchers("/error").permitAll()
                     .requestMatchers("/usuarios/**").hasRole("ADMIN")
                     .requestMatchers("/auditoria/**").hasRole("ADMIN")
                     .requestMatchers("/h2-console/**").hasRole("ADMIN")
