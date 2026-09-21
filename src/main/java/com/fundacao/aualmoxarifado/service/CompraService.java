@@ -281,14 +281,30 @@ public class CompraService {
 
     /** RF15 - usada pela tela "Aguardando Compra" (FIFO: dataSolicitacao asc). */
     public Page<Compra> listarAguardandoCompra(Pageable pageable) {
-        return compraRepository.findByStatus(StatusCompra.AGUARDANDO_COMPRA,
+        Page<Compra> page = compraRepository.findByStatus(StatusCompra.AGUARDANDO_COMPRA,
                 comOrdenacaoPadrao(pageable, Sort.by(Sort.Direction.ASC, "dataSolicitacao")));
+        carregarItens(page);
+        return page;
     }
 
     /** Lista geral (todas as compras, mais novas primeiro). */
     public Page<Compra> listarTodas(Pageable pageable) {
-        return compraRepository.findAll(
+        Page<Compra> page = compraRepository.findAll(
                 comOrdenacaoPadrao(pageable, Sort.by(Sort.Direction.DESC, "dataSolicitacao")));
+        carregarItens(page);
+        return page;
+    }
+
+    /**
+     * open-in-view=false: a lista.html mostra a contagem de itens por linha
+     * ({@code #lists.size(c.itens)}), e essa coleção lazy tem de estar
+     * inicializada antes de a transação fechar, senão a listagem quebra no
+     * render (era exatamente o que travava o módulo de compras em produção).
+     */
+    private void carregarItens(Page<Compra> page) {
+        if (!page.isEmpty()) {
+            compraRepository.carregarItens(page.getContent());
+        }
     }
 
     /** Garante a ordenação padrão quando o chamador não pede nenhuma. */
@@ -300,8 +316,13 @@ public class CompraService {
     }
 
     public Compra buscarPorId(Long id) {
-        return compraRepository.findById(id)
+        Compra compra = compraRepository.findByIdComItens(id)
                 .orElseThrow(() -> new IllegalArgumentException("Compra id=" + id + " não encontrada."));
+        // Segunda query, mesma sessão: hidrata compra.anexos na mesma instância
+        // (ver o porquê no Javadoc de findByIdComAnexos). detalhes.html lê
+        // itens E anexos; ambos precisam estar prontos antes da sessão fechar.
+        compraRepository.findByIdComAnexos(id);
+        return compra;
     }
 
     /** Cancela uma pré-compra que ainda não recebeu baixa. */
