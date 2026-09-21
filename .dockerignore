@@ -1,0 +1,10 @@
+# Artefatos de compilacao local - a imagem compila do zero.
+build/
+.gradle/
+# Nunca entra na imagem: segredos e dados.
+.env
+uploads/
+# Irrelevante para o build.
+.git/
+.claude/
+compose.yaml
