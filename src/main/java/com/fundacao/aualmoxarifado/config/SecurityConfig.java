@@ -99,6 +99,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/api/importacao/**").hasRole("ADMIN")
+                    // Aprovar/entregar/rejeitar saídas pelo app é decisão de gestor (RN04).
+                    .requestMatchers(HttpMethod.POST, "/api/movimentacoes/*/status").hasRole("ADMIN")
                     // Trilha de auditoria é admin-only na web; a API tem de seguir
                     // a mesma regra, senão um usuário PADRAO (ou a credencial do
                     // app mobile) leria o histórico inteiro de todos.

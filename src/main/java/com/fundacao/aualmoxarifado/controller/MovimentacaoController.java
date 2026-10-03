@@ -3,6 +3,7 @@ package com.fundacao.aualmoxarifado.controller;
 import com.fundacao.aualmoxarifado.domain.Setor;
 import com.fundacao.aualmoxarifado.domain.StatusMovimentacao;
 import com.fundacao.aualmoxarifado.domain.TipoMovimentacao;
+import com.fundacao.aualmoxarifado.exception.RegraDeNegocioException;
 import com.fundacao.aualmoxarifado.repository.MaterialRepository;
 import com.fundacao.aualmoxarifado.repository.SetorRepository;
 import com.fundacao.aualmoxarifado.service.MovimentacaoService;
@@ -119,9 +120,15 @@ public class MovimentacaoController {
     @PostMapping("/{id}/status")
     public String alterarStatus(@PathVariable Long id,
                                 @RequestParam StatusMovimentacao status,
+                                @RequestParam(required = false) String motivo,
                                 RedirectAttributes ra) {
-        movimentacaoService.alterarStatus(id, status);
-        ra.addFlashAttribute("sucesso", "Status atualizado para " + status + ".");
+        try {
+            movimentacaoService.alterarStatus(id, status, motivo);
+            ra.addFlashAttribute("sucesso", "Status atualizado para " + status + ".");
+        } catch (RegraDeNegocioException | IllegalArgumentException ex) {
+            // Transição inválida (RN04) ou motivo ausente: mostra a regra em vez de estourar erro.
+            ra.addFlashAttribute("erro", ex.getMessage());
+        }
         return "redirect:/movimentacoes";
     }
 

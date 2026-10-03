@@ -1,6 +1,9 @@
 package com.fundacao.aualmoxarifado.service;
 
 import com.fundacao.aualmoxarifado.domain.*;
+import com.fundacao.aualmoxarifado.dto.CompraDetalheDTO;
+import com.fundacao.aualmoxarifado.dto.CompraResumoDTO;
+import com.fundacao.aualmoxarifado.exception.RecursoNaoEncontradoException;
 import com.fundacao.aualmoxarifado.repository.CompraRepository;
 import com.fundacao.aualmoxarifado.repository.MaterialRepository;
 import com.fundacao.aualmoxarifado.repository.SetorRepository;
@@ -342,6 +345,27 @@ public class CompraService {
         if (!page.isEmpty()) {
             compraRepository.carregarItens(page.getContent());
         }
+    }
+
+    /**
+     * Listagem para a REST API ({@code GET /api/compras}): filtro opcional por
+     * status e DTO montado dentro da transação read-only (itens já hidratados).
+     */
+    public Page<CompraResumoDTO> listarResumo(StatusCompra status, Pageable pageable) {
+        Pageable p = comOrdenacaoPadrao(pageable, Sort.by(Sort.Direction.DESC, "dataSolicitacao"));
+        Page<Compra> page = status == null
+                ? compraRepository.findAll(p)
+                : compraRepository.findByStatus(status, p);
+        carregarItens(page);
+        return page.map(CompraResumoDTO::from);
+    }
+
+    /** Detalhe para a REST API ({@code GET /api/compras/{id}}) com itens e anexos. */
+    public CompraDetalheDTO buscarDetalhe(Long id) {
+        Compra compra = compraRepository.findByIdComItens(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Compra", id));
+        compraRepository.findByIdComAnexos(id);
+        return CompraDetalheDTO.from(compra);
     }
 
     /** Garante a ordenação padrão quando o chamador não pede nenhuma. */
