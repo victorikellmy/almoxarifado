@@ -54,6 +54,19 @@
                                     th:text="${compra.dataRecebimento != null ? #temporals.format(compra.dataRecebimento, 'dd/MM/yyyy HH:mm') : '—'}"></dd>
                                 <dt class="col-sm-4 text-muted">Observação</dt>
                                 <dd class="col-sm-8" th:text="${compra.observacao} ?: '—'"></dd>
+
+                                <dt class="col-12 text-muted text-uppercase small mt-2 mb-1" style="letter-spacing:.05em;">Documento de origem</dt>
+                                <dt class="col-sm-4 text-muted">Parte / Ofício nº</dt>
+                                <dd class="col-sm-8" th:text="${compra.numeroDocumento} ?: '—'"></dd>
+                                <dt class="col-sm-4 text-muted">SGD</dt>
+                                <dd class="col-sm-8" th:text="${compra.numeroSgd} ?: '—'"></dd>
+                                <dt class="col-sm-4 text-muted">Data do documento</dt>
+                                <dd class="col-sm-8"
+                                    th:text="${compra.dataDocumento != null ? #temporals.format(compra.dataDocumento, 'dd/MM/yyyy') : '—'}"></dd>
+                                <dt class="col-sm-4 text-muted">Assunto</dt>
+                                <dd class="col-sm-8" th:text="${compra.assunto} ?: '—'"></dd>
+                                <dt class="col-sm-4 text-muted">Solicitante</dt>
+                                <dd class="col-sm-8" th:text="${compra.solicitanteDocumento} ?: '—'"></dd>
                             </dl>
                         </div>
                     </div>

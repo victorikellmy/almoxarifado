@@ -65,6 +65,20 @@ public class CompraService {
     public Compra criarPreCompra(Compra compra,
                                  List<ItemCompra> itens,
                                  MultipartFile pdfSolicitacao) {
+        return criarPreCompra(compra, itens, pdfSolicitacao, null);
+    }
+
+    /**
+     * Variante usada pela tela "Nova pré-compra" com leitura automática da Parte:
+     * o PDF já foi enviado antes (para ser lido) e fica na sessão como
+     * {@link LeituraParteCompraService.ArquivoLido}; aqui ele vira o anexo SOLICITACAO
+     * quando nenhum novo arquivo foi escolhido no submit.
+     */
+    @Transactional
+    public Compra criarPreCompra(Compra compra,
+                                 List<ItemCompra> itens,
+                                 MultipartFile pdfSolicitacao,
+                                 LeituraParteCompraService.ArquivoLido pdfLido) {
 
         // RN08 — setor obrigatório quando a compra é DIRETA
         if (compra.getTipo() == TipoCompra.DIRETA
@@ -123,6 +137,9 @@ public class CompraService {
 
         if (pdfSolicitacao != null && !pdfSolicitacao.isEmpty()) {
             anexar(salva, pdfSolicitacao, TipoAnexoCompra.SOLICITACAO);
+        } else if (pdfLido != null) {
+            anexar(salva, pdfLido.conteudo(), pdfLido.nomeOriginal(), pdfLido.contentType(),
+                    TipoAnexoCompra.SOLICITACAO);
         }
 
         log.info("[Compras] Pré-compra #{} criada (tipo={}, itens={}, total estimado={}).",
@@ -260,6 +277,26 @@ public class CompraService {
     @Transactional
     public AnexoCompra anexar(Compra compra, MultipartFile arquivo, TipoAnexoCompra tipo) {
         var meta = anexoStorageService.salvar(arquivo, "compras/" + compra.getId());
+
+        AnexoCompra anexo = AnexoCompra.builder()
+                .tipo(tipo)
+                .nomeOriginal(meta.nomeOriginal())
+                .caminhoArmazenado(meta.caminhoRelativo())
+                .contentType(meta.contentType())
+                .tamanhoBytes(meta.tamanhoBytes())
+                .dataUpload(LocalDateTime.now())
+                .build();
+
+        compra.adicionarAnexo(anexo);
+        compraRepository.save(compra);
+        return anexo;
+    }
+
+    /** Mesmo que {@link #anexar(Compra, MultipartFile, TipoAnexoCompra)}, para conteúdo já em memória. */
+    @Transactional
+    public AnexoCompra anexar(Compra compra, byte[] conteudo, String nomeArquivo, String contentType,
+                              TipoAnexoCompra tipo) {
+        var meta = anexoStorageService.salvar(conteudo, nomeArquivo, contentType, "compras/" + compra.getId());
 
         AnexoCompra anexo = AnexoCompra.builder()
                 .tipo(tipo)

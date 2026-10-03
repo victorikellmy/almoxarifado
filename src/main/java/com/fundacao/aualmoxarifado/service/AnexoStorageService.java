@@ -67,13 +67,28 @@ public class AnexoStorageService {
         if (arquivo == null || arquivo.isEmpty()) {
             throw new IllegalArgumentException("Arquivo vazio ou ausente.");
         }
+        try (var in = arquivo.getInputStream()) {
+            return salvar(in.readAllBytes(), arquivo.getOriginalFilename(), arquivo.getContentType(), subpasta);
+        } catch (IOException ex) {
+            throw new IllegalStateException("Falha ao ler o anexo enviado.", ex);
+        }
+    }
 
-        String nomeOriginal = arquivo.getOriginalFilename() != null
-                ? Paths.get(arquivo.getOriginalFilename()).getFileName().toString()
+    /**
+     * Variante para conteúdo já em memória — usada quando o PDF foi enviado antes
+     * (leitura automática da Parte em "Nova pré-compra") e guardado na sessão até o
+     * colaborador confirmar a compra.
+     */
+    public ArquivoArmazenado salvar(byte[] conteudo, String nomeArquivo, String contentType, String subpasta) {
+        if (conteudo == null || conteudo.length == 0) {
+            throw new IllegalArgumentException("Arquivo vazio ou ausente.");
+        }
+
+        String nomeOriginal = nomeArquivo != null && !nomeArquivo.isBlank()
+                ? Paths.get(nomeArquivo).getFileName().toString()
                 : "anexo.pdf";
 
         // Aceitamos apenas PDF para este módulo (regra de UI também é validada no <input accept>).
-        String contentType = arquivo.getContentType();
         if (contentType != null
                 && !contentType.equalsIgnoreCase("application/pdf")
                 && !nomeOriginal.toLowerCase().endsWith(".pdf")) {
@@ -91,9 +106,7 @@ public class AnexoStorageService {
             String nomeUnico = UUID.randomUUID() + "_" + nomeOriginal;
             Path destinoArquivo = destinoPasta.resolve(nomeUnico);
 
-            try (var in = arquivo.getInputStream()) {
-                Files.copy(in, destinoArquivo, StandardCopyOption.REPLACE_EXISTING);
-            }
+            Files.write(destinoArquivo, conteudo);
 
             // Guardamos sempre o caminho RELATIVO à raiz para portabilidade do banco.
             String relativo = raizUploads.relativize(destinoArquivo).toString().replace('\\', '/');
@@ -102,7 +115,7 @@ public class AnexoStorageService {
                     nomeOriginal,
                     relativo,
                     contentType,
-                    arquivo.getSize());
+                    (long) conteudo.length);
         } catch (IOException ex) {
             throw new IllegalStateException("Falha ao gravar o anexo em disco.", ex);
         }

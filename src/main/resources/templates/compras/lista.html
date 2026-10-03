@@ -54,7 +54,12 @@
                         </thead>
                         <tbody>
                         <tr th:each="c : ${compras}">
-                            <td class="text-muted" th:text="${c.id}"></td>
+                            <td class="text-muted">
+                                <span th:text="${c.id}"></span>
+                                <small class="d-block text-nowrap" th:if="${c.numeroDocumento != null}"
+                                       th:text="'Doc. ' + ${c.numeroDocumento}"
+                                       th:title="${c.assunto}"></small>
+                            </td>
                             <td class="text-muted small"
                                 th:text="${#temporals.format(c.dataSolicitacao, 'dd/MM/yyyy HH:mm')}"></td>
                             <td>

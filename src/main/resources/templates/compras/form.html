@@ -5,7 +5,7 @@
 <div class="app-shell">
     <aside th:replace="~{fragments/layout :: sidebar('compras')}"></aside>
     <main class="app-main">
-        <header th:replace="~{fragments/layout :: topbar('Nova pré-compra', 'Lance a solicitação física e anexe o PDF (RF14)')}"></header>
+        <header th:replace="~{fragments/layout :: topbar('Nova pré-compra', 'Anexe a Parte/Ofício para preencher automaticamente, revise e salve (RF14)')}"></header>
 
         <div class="app-content">
 
@@ -14,9 +14,70 @@
                 <span th:text="${erro}"></span>
             </div>
 
+            <!-- ============ Passo 1: leitura automática do anexo ============ -->
+            <form th:action="@{/compras/ler-anexo}" method="post" enctype="multipart/form-data"
+                  class="card mb-3" th:if="${leitura == null}">
+                <div class="card-pad">
+                    <div class="d-flex align-items-start gap-3 flex-wrap">
+                        <span class="stat-icon bg-brand" style="width:42px;height:42px;flex-shrink:0;">
+                            <i class="bi bi-file-earmark-pdf"></i>
+                        </span>
+                        <div class="flex-grow-1 min-w-0">
+                            <h6 class="mb-1">Ler anexo da Parte / Ofício</h6>
+                            <p class="text-muted small mb-2">
+                                Envie o PDF da Parte do setor ou do Ofício da unidade (BPM/CIPM/Coordenação). O sistema lê o
+                                documento e preenche tipo, setor, fornecedor, valor, dados do documento e itens;
+                                você só revisa e salva. O PDF já fica anexado à compra.
+                            </p>
+                            <div class="d-flex gap-2 flex-wrap align-items-center">
+                                <input type="file" name="pdfParte" accept="application/pdf,.pdf" class="form-control" style="max-width:420px" required>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-magic"></i> Ler e preencher
+                                </button>
+                            </div>
+                            <div class="form-text">
+                                PDFs escaneados (somente imagem) não têm texto legível: nesse caso os campos ficam para preenchimento manual
+                                <span th:if="${!iaHabilitada}">(a leitura por IA pode ser habilitada em <code>compras.ia.habilitada</code>)</span><span th:if="${iaHabilitada}">— leitura por IA habilitada para complementar</span>.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            <!-- ============ Resultado da leitura ============ -->
+            <div class="card mb-3 border-success" th:if="${leitura != null}">
+                <div class="card-pad">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                        <div>
+                            <h6 class="mb-1 text-success"><i class="bi bi-check-circle"></i> Anexo lido: <span th:text="${leitura.arquivo.nomeOriginal}"></span></h6>
+                            <p class="text-muted small mb-0">
+                                <span th:if="${leitura.extracao.tipoDocumento != null}" th:text="${leitura.extracao.tipoDocumento}"></span>
+                                <span th:if="${leitura.extracao.numeroDocumento != null}" th:text="'nº ' + ${leitura.extracao.numeroDocumento}"></span>
+                                <span th:if="${leitura.extracao.numeroSgd != null}" th:text="'· SGD ' + ${leitura.extracao.numeroSgd}"></span>
+                                <span th:if="${leitura.extracao.unidadeSolicitante != null}" th:text="'· ' + ${leitura.extracao.unidadeSolicitante}"></span>
+                                <span th:if="${leitura.extracao.natureza != null}" th:text="'· ' + ${leitura.extracao.natureza}"></span>
+                                <span th:if="${leitura.extracao.lidoPorIa}" class="badge bg-info text-dark ms-1">IA</span>
+                            </p>
+                        </div>
+                        <a href="/compras/nova" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-repeat"></i> Ler outro arquivo</a>
+                    </div>
+                    <p class="small mb-0 mt-2" th:if="${leitura.extracao.descricao != null}" style="white-space:pre-line"
+                       th:text="${#strings.abbreviate(leitura.extracao.descricao, 600)}"></p>
+                    <div th:if="${!#lists.isEmpty(avisos)}" class="alert alert-warning small mt-3 mb-0">
+                        <strong>Confira antes de salvar:</strong>
+                        <ul class="mb-0 ps-3">
+                            <li th:each="a : ${avisos}" th:text="${a}"></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ Passo 2: formulário da pré-compra ============ -->
             <form th:action="@{/compras}" th:object="${compra}" method="post"
                   enctype="multipart/form-data" class="card">
                 <div class="card-pad">
+
+                    <input type="hidden" name="leituraId" th:if="${leituraId != null}" th:value="${leituraId}">
 
                     <h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.05em;">
                         Dados da compra
@@ -37,7 +98,9 @@
                             </label>
                             <select name="setorSolicitanteId" id="setor" class="form-select" disabled>
                                 <option value="">— Selecione —</option>
-                                <option th:each="s : ${setores}" th:value="${s.id}" th:text="${s.nome}"></option>
+                                <option th:each="s : ${setores}" th:value="${s.id}" th:text="${s.nome}"
+                                        th:selected="${(setorSugeridoId != null and setorSugeridoId == s.id)
+                                                       or (compra.setorSolicitante != null and compra.setorSolicitante.id == s.id)}"></option>
                             </select>
                             <div class="form-text">Obrigatório para compra DIRETA (RN08).</div>
                         </div>
@@ -57,7 +120,35 @@
 
                         <div class="col-md-9">
                             <label class="form-label">Observação</label>
-                            <input type="text" class="form-control" th:field="*{observacao}">
+                            <input type="text" class="form-control" th:field="*{observacao}" maxlength="200">
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+                    <h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.05em;">
+                        Documento de origem <small class="text-lowercase fw-normal">(Parte / Ofício — opcional)</small>
+                    </h6>
+                    <div class="row g-3">
+                        <div class="col-md-2">
+                            <label class="form-label">Nº</label>
+                            <input type="text" class="form-control" th:field="*{numeroDocumento}" placeholder="001/2026" maxlength="30">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">SGD</label>
+                            <input type="text" class="form-control" th:field="*{numeroSgd}" placeholder="2026/09039/000362" maxlength="40">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Data</label>
+                            <input type="date" class="form-control" th:field="*{dataDocumento}">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label">Assunto</label>
+                            <input type="text" class="form-control" th:field="*{assunto}" maxlength="255">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Solicitante (quem assina)</label>
+                            <input type="text" class="form-control" th:field="*{solicitanteDocumento}" maxlength="255"
+                                   placeholder="Posto, nome e função">
                         </div>
                     </div>
 
@@ -82,8 +173,36 @@
                                 <th style="width:10%"></th>
                             </tr>
                             </thead>
-                            <tbody data-repeater>
-                            <tr class="linha-item" data-repeater-item>
+                            <tbody data-repeater data-repeater-template="#modelo-linha-item">
+                            <!-- Linhas sugeridas pela leitura do anexo -->
+                            <tr class="linha-item" data-repeater-item th:each="it : ${itensSugeridos}">
+                                <td>
+                                    <select name="itemMaterialId" class="form-select" required>
+                                        <option value="">— Selecione —</option>
+                                        <option th:each="m : ${materiais}"
+                                                th:value="${m.id}"
+                                                th:selected="${it.materialId != null and it.materialId == m.id}"
+                                                th:text="${m.nome + ' (' + m.unidadeMedida + ')'}"></option>
+                                    </select>
+                                    <div class="form-text" th:classappend="${it.casado} ? '' : 'text-warning'">
+                                        <i class="bi" th:classappend="${it.casado} ? 'bi-link-45deg' : 'bi-question-circle'"></i>
+                                        No documento: <span th:text="${it.descricao}"></span>
+                                        <span th:if="${it.unidade != null}" th:text="'(' + ${it.unidade} + ')'"></span>
+                                        <span th:unless="${it.casado}">— não encontrado no catálogo</span>
+                                    </div>
+                                </td>
+                                <td><input type="number" name="itemQuantidade" min="1" class="form-control" required th:value="${it.quantidade}"></td>
+                                <td><input type="number" name="itemValorUnitario" step="0.01" min="0"
+                                           class="form-control" th:value="${it.valorUnitario}"></td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-remover"
+                                            data-repeater-remove>
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            <!-- Linha em branco (sem leitura ou sem itens identificados) -->
+                            <tr class="linha-item" data-repeater-item th:if="${itensSugeridos == null or #lists.isEmpty(itensSugeridos)}">
                                 <td>
                                     <select name="itemMaterialId" class="form-select" required>
                                         <option value="">— Selecione —</option>
@@ -106,11 +225,39 @@
                         </table>
                     </div>
 
+                    <!-- Modelo usado pelo botão "Adicionar item" (repeater.js) -->
+                    <template id="modelo-linha-item">
+                        <tr class="linha-item" data-repeater-item>
+                            <td>
+                                <select name="itemMaterialId" class="form-select" required>
+                                    <option value="">— Selecione —</option>
+                                    <option th:each="m : ${materiais}"
+                                            th:value="${m.id}"
+                                            th:text="${m.nome + ' (' + m.unidadeMedida + ')'}"></option>
+                                </select>
+                            </td>
+                            <td><input type="number" name="itemQuantidade" min="1" class="form-control" required></td>
+                            <td><input type="number" name="itemValorUnitario" step="0.01" min="0" class="form-control" value="0"></td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-remover" data-repeater-remove>
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </template>
+
                     <hr class="my-4">
 
                     <h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.05em;">
                         Anexo
                     </h6>
+                    <div th:if="${leituraId != null}" class="alert alert-success small py-2 d-flex align-items-center gap-2">
+                        <i class="bi bi-paperclip"></i>
+                        <span>
+                            PDF <strong th:text="${leitura != null ? leitura.arquivo.nomeOriginal : anexoPendenteNome}"></strong>
+                            já carregado — será anexado como solicitação ao salvar. Envie outro arquivo abaixo apenas para substituí-lo.
+                        </span>
+                    </div>
                     <label class="form-label">PDF da solicitação física <small class="text-muted">(RF16)</small></label>
                     <input type="file" name="pdfSolicitacao" accept="application/pdf" class="form-control">
                     <div class="form-text">Aceita apenas arquivos PDF.</div>
