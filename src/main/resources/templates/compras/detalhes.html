@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Compra')}"></head>
 <body>
 <div class="app-shell">
@@ -14,11 +15,15 @@
                     <h2 class="d-inline-block me-3">Compra #<span th:text="${compra.id}"></span></h2>
                     <span th:replace="~{fragments/status :: pill(${compra.status.name()})}"></span>
                 </div>
-                <div class="d-flex gap-2">
-                    <a th:if="${compra.status.name() == 'AGUARDANDO_COMPRA'}"
+                <div class="d-flex gap-2 flex-wrap" sec:authorize="hasAnyRole('ADMIN','COMPRAS')">
+                    <a th:if="${compra.status.name() == 'AGUARDANDO_COMPRA' and compra.autorizacaoDiretoria.name() == 'AUTORIZADA'}"
                        class="btn btn-success" th:href="@{|/compras/${compra.id}/baixa|}">
-                        <i class="bi bi-check2-square"></i> Baixar
+                        <i class="bi bi-check2-square"></i> Receber / baixar
                     </a>
+                    <span th:if="${compra.status.name() == 'AGUARDANDO_COMPRA' and compra.autorizacaoDiretoria.name() == 'PENDENTE'}"
+                          class="btn btn-success disabled" title="Registre a decisão da Diretoria para liberar o recebimento">
+                        <i class="bi bi-check2-square"></i> Receber / baixar
+                    </span>
                     <form th:if="${compra.status.name() == 'AGUARDANDO_COMPRA'}"
                           th:action="@{|/compras/${compra.id}/cancelar|}" method="post"
                           onsubmit="return confirm('Tem certeza que deseja cancelar esta pré-compra?');">
@@ -27,6 +32,78 @@
                         </button>
                     </form>
                     <a href="/compras" class="btn btn-outline-secondary">Voltar</a>
+                </div>
+                <div sec:authorize="!hasAnyRole('ADMIN','COMPRAS')">
+                    <a href="/compras" class="btn btn-outline-secondary">Voltar</a>
+                </div>
+            </div>
+
+            <!-- ============ Decisão da Diretoria ============ -->
+            <div class="card mb-3"
+                 th:classappend="${compra.autorizacaoDiretoria.name() == 'AUTORIZADA'} ? 'border-success'
+                               : (${compra.autorizacaoDiretoria.name() == 'NAO_AUTORIZADA'} ? 'border-danger' : 'border-warning')">
+                <div class="card-pad">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                        <div>
+                            <h6 class="text-muted text-uppercase small mb-2" style="letter-spacing:.05em;">Decisão da Diretoria</h6>
+                            <span th:replace="~{fragments/status :: pill(${compra.autorizacaoDiretoria.name()})}"></span>
+                            <div class="small text-muted mt-2" th:if="${compra.autorizadoEm != null}">
+                                Registrada por <strong th:text="${compra.autorizadoPor} ?: '—'"></strong>
+                                em <span th:text="${#temporals.format(compra.autorizadoEm, 'dd/MM/yyyy HH:mm')}"></span>
+                            </div>
+                            <div class="mt-2" th:if="${compra.parecerDiretoria != null}">
+                                <span class="text-muted small">Parecer:</span>
+                                <span th:text="${compra.parecerDiretoria}"></span>
+                            </div>
+                            <p class="small text-muted mb-0 mt-2"
+                               th:if="${compra.autorizacaoDiretoria.name() == 'PENDENTE' and compra.status.name() == 'AGUARDANDO_COMPRA'}">
+                                O recebimento só é liberado depois que o setor de Compras registrar aqui se a Diretoria autorizou.
+                            </p>
+                        </div>
+                        <form th:if="${compra.autorizacaoDiretoria.name() == 'PENDENTE' and compra.status.name() == 'AGUARDANDO_COMPRA'}"
+                              sec:authorize="hasAnyRole('ADMIN','COMPRAS')"
+                              th:action="@{|/compras/${compra.id}/autorizacao|}" method="post"
+                              class="d-flex flex-column gap-2" style="min-width:320px; max-width:460px;">
+                            <input type="text" name="parecer" class="form-control" maxlength="500"
+                                   placeholder="Parecer da Diretoria (obrigatório se não autorizar)">
+                            <div class="d-flex gap-2">
+                                <button type="submit" name="decisao" value="AUTORIZADA" class="btn btn-success">
+                                    <i class="bi bi-hand-thumbs-up"></i> Diretoria autorizou
+                                </button>
+                                <button type="submit" name="decisao" value="NAO_AUTORIZADA" class="btn btn-outline-danger"
+                                        onclick="return confirm('Registrar que a Diretoria NÃO autorizou? A pré-compra será cancelada.');">
+                                    <i class="bi bi-hand-thumbs-down"></i> Não autorizou
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============ Integração com o Patrimônio ============ -->
+            <div class="card mb-3" th:if="${envioPatrimonio != null}"
+                 th:classappend="${envioPatrimonio.status.name() == 'ENVIADO'} ? 'border-success' : 'border-warning'">
+                <div class="card-pad d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <div>
+                        <h6 class="text-muted text-uppercase small mb-2" style="letter-spacing:.05em;">
+                            <i class="bi bi-building-gear"></i> Patrimônio
+                        </h6>
+                        <span th:replace="~{fragments/status :: pill(${envioPatrimonio.status.name()})}"></span>
+                        <span class="small text-muted ms-2" th:if="${envioPatrimonio.enviadoEm != null}"
+                              th:text="'enviado em ' + ${#temporals.format(envioPatrimonio.enviadoEm, 'dd/MM/yyyy HH:mm')}"></span>
+                        <span class="small text-muted ms-2" th:if="${envioPatrimonio.idExterno != null}"
+                              th:text="'· pendência nº ' + ${envioPatrimonio.idExterno} + ' no Patrimônio'"></span>
+                        <div class="small text-danger mt-2" th:if="${envioPatrimonio.status.name() != 'ENVIADO' and envioPatrimonio.ultimoErro != null}"
+                             th:text="${envioPatrimonio.ultimoErro}"></div>
+                        <div class="small text-muted mt-1">
+                            Retirado por <strong th:text="${compra.retiradoPor} ?: '—'"></strong>
+                            · destino <strong th:text="${compra.setorEntrega != null ? compra.setorEntrega.nome : (compra.setorSolicitante != null ? compra.setorSolicitante.nome : '—')}"></strong>
+                        </div>
+                    </div>
+                    <form th:if="${envioPatrimonio.status.name() != 'ENVIADO'}" sec:authorize="hasAnyRole('ADMIN','COMPRAS')"
+                          th:action="@{|/compras/${compra.id}/patrimonio/reenviar|}" method="post">
+                        <button class="btn btn-outline-primary"><i class="bi bi-arrow-repeat"></i> Reenviar agora</button>
+                    </form>
                 </div>
             </div>
 
@@ -42,9 +119,13 @@
                                 <dd class="col-sm-8">
                                     <span class="badge bg-primary" th:if="${compra.tipo.name() == 'DIRETA'}">Direta</span>
                                     <span class="badge bg-secondary" th:if="${compra.tipo.name() == 'ESTOQUE'}">Estoque</span>
+                                    <span class="badge badge-patrimonial" th:if="${compra.tipo.name() == 'PATRIMONIAL'}"><i class="bi bi-building-gear"></i> Patrimonial</span>
                                 </dd>
                                 <dt class="col-sm-4 text-muted">Setor solicitante</dt>
                                 <dd class="col-sm-8" th:text="${compra.setorSolicitante != null ? compra.setorSolicitante.nome : '—'}"></dd>
+                                <dt class="col-sm-4 text-muted" th:if="${compra.dataRecebimento != null}">Retirado por / destino</dt>
+                                <dd class="col-sm-8" th:if="${compra.dataRecebimento != null}"
+                                    th:text="${(compra.retiradoPor ?: '—') + ' · ' + (compra.setorEntrega != null ? compra.setorEntrega.nome : (compra.setorSolicitante != null ? compra.setorSolicitante.nome : '—'))}"></dd>
                                 <dt class="col-sm-4 text-muted">Fornecedor</dt>
                                 <dd class="col-sm-8" th:text="${compra.fornecedor} ?: '—'"></dd>
                                 <dt class="col-sm-4 text-muted">Solicitada em</dt>
@@ -105,7 +186,7 @@
                     <table class="table">
                         <thead>
                         <tr>
-                            <th>Material</th>
+                            <th>Material / bem</th>
                             <th class="text-end">Qtd.</th>
                             <th class="text-end">Valor unitário</th>
                             <th class="text-end">Subtotal</th>
@@ -113,7 +194,10 @@
                         </thead>
                         <tbody>
                         <tr th:each="i : ${compra.itens}">
-                            <td class="fw-semibold" th:text="${i.material.nome}"></td>
+                            <td class="fw-semibold">
+                                <span th:text="${i.nomeItem}"></span>
+                                <small class="d-block text-muted fw-normal" th:if="${i.material != null and i.descricao != null}" th:text="${i.descricao}"></small>
+                            </td>
                             <td class="text-end" th:text="${i.quantidade}"></td>
                             <td class="text-end" th:text="${#numbers.formatCurrency(i.valorUnitario)}"></td>
                             <td class="text-end fw-semibold" th:text="${#numbers.formatCurrency(i.subtotal)}"></td>

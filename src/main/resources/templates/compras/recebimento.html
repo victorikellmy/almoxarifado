@@ -5,7 +5,7 @@
 <div class="app-shell">
     <aside th:replace="~{fragments/layout :: sidebar('compras-fila')}"></aside>
     <main class="app-main">
-        <header th:replace="~{fragments/layout :: topbar('Recebimento de compra', 'Confirme NF, valor real e gere a baixa (RF15)')}"></header>
+        <header th:replace="~{fragments/layout :: topbar('Recebimento de compra', 'Confirme NF, valor real, quem retirou e se o bem será patrimoniado (RF15)')}"></header>
 
         <div class="app-content">
 
@@ -14,18 +14,29 @@
                 <span th:text="${erro}"></span>
             </div>
 
+            <div class="alert alert-warning d-flex align-items-start gap-2"
+                 th:if="${compra.autorizacaoDiretoria.name() != 'AUTORIZADA'}">
+                <i class="bi bi-hand-thumbs-up fs-5"></i>
+                <span>Esta compra ainda não tem a autorização da Diretoria registrada. Volte aos
+                    <a th:href="@{|/compras/${compra.id}|}">detalhes</a> e registre a decisão antes de receber.</span>
+            </div>
+
             <!-- Aviso contextualizado conforme tipo da compra -->
             <div class="alert d-flex align-items-start gap-2"
-                 th:classappend="${compra.tipo.name() == 'ESTOQUE'} ? 'alert-success' : 'alert-warning'">
+                 th:classappend="${compra.tipo.name() == 'ESTOQUE'} ? 'alert-success' : (${compra.tipo.name() == 'PATRIMONIAL'} ? 'alert-primary' : 'alert-warning')">
                 <i class="bi fs-5"
-                   th:classappend="${compra.tipo.name() == 'ESTOQUE'} ? 'bi-boxes' : 'bi-arrow-right-circle'"></i>
+                   th:classappend="${compra.tipo.name() == 'ESTOQUE'} ? 'bi-boxes' : (${compra.tipo.name() == 'PATRIMONIAL'} ? 'bi-building-gear' : 'bi-arrow-right-circle')"></i>
                 <span th:if="${compra.tipo.name() == 'ESTOQUE'}">
                     Os itens entram como <strong>ENTRADA</strong> e o saldo dos materiais será incrementado (RN09).
                 </span>
                 <span th:if="${compra.tipo.name() == 'DIRETA'}">
                     Os itens serão registrados como <strong>COMPRA DIRETA</strong> e entregues ao setor
-                    <strong th:text="${compra.setorSolicitante.nome}"></strong> —
-                    <em>não entram no estoque geral</em> (RN10).
+                    <strong th:text="${compra.setorSolicitante != null ? compra.setorSolicitante.nome : '—'}"></strong> —
+                    <em>não entram no estoque geral</em> (RN10). Se o bem for permanente, marque "será patrimoniado".
+                </span>
+                <span th:if="${compra.tipo.name() == 'PATRIMONIAL'}">
+                    Compra <strong>PATRIMONIAL</strong>: não movimenta estoque. Ao confirmar, o recebimento (com a NF, quem retirou
+                    e o setor) é enviado ao <strong>sistema de Patrimônio</strong>, que avisará o responsável para tombar o bem.
                 </span>
             </div>
 
@@ -39,11 +50,16 @@
                         <dd class="col-sm-9">
                             <span class="badge bg-primary" th:if="${compra.tipo.name() == 'DIRETA'}">Direta</span>
                             <span class="badge bg-secondary" th:if="${compra.tipo.name() == 'ESTOQUE'}">Estoque</span>
+                            <span class="badge badge-patrimonial" th:if="${compra.tipo.name() == 'PATRIMONIAL'}">Patrimonial</span>
                         </dd>
+                        <dt class="col-sm-3 text-muted">Diretoria</dt>
+                        <dd class="col-sm-9"><span th:replace="~{fragments/status :: pill(${compra.autorizacaoDiretoria.name()})}"></span></dd>
                         <dt class="col-sm-3 text-muted">Setor solicitante</dt>
                         <dd class="col-sm-9" th:text="${compra.setorSolicitante != null ? compra.setorSolicitante.nome : '—'}"></dd>
                         <dt class="col-sm-3 text-muted">Fornecedor</dt>
                         <dd class="col-sm-9" th:text="${compra.fornecedor} ?: '—'"></dd>
+                        <dt class="col-sm-3 text-muted">Documento</dt>
+                        <dd class="col-sm-9" th:text="${compra.numeroDocumento != null ? 'Parte/Ofício ' + compra.numeroDocumento : '—'}"></dd>
                         <dt class="col-sm-3 text-muted">Valor estimado</dt>
                         <dd class="col-sm-9" th:text="${#numbers.formatCurrency(compra.valorEstimado)}"></dd>
                         <dt class="col-sm-3 text-muted">Itens</dt>
@@ -51,7 +67,7 @@
                             <ul class="list-unstyled mb-0">
                                 <li th:each="i : ${compra.itens}">
                                     <i class="bi bi-dot text-muted"></i>
-                                    <span th:text="${i.quantidade + ' × ' + i.material.nome}"></span>
+                                    <span th:text="${i.quantidade + ' × ' + i.nomeItem}"></span>
                                 </li>
                             </ul>
                         </dd>
@@ -72,17 +88,59 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Valor real final (R$) *</label>
-                            <input type="number" name="valorRealFinal" step="0.01" min="0" class="form-control" required>
+                            <input type="number" name="valorRealFinal" step="0.01" min="0" class="form-control" required
+                                   th:value="${compra.valorEstimado}">
                         </div>
-                        <div class="col-md-12">
+                        <div class="col-md-4">
                             <label class="form-label">PDF da nota fiscal <small class="text-muted">(RF16)</small></label>
                             <input type="file" name="pdfNotaFiscal" accept="application/pdf" class="form-control">
                         </div>
                     </div>
 
+                    <hr class="my-4" th:if="${compra.tipo.name() != 'ESTOQUE'}">
+                    <h6 class="text-muted text-uppercase small mb-3" style="letter-spacing:.05em;" th:if="${compra.tipo.name() != 'ESTOQUE'}">
+                        Entrega e patrimônio
+                    </h6>
+                    <div class="row g-3" th:if="${compra.tipo.name() != 'ESTOQUE'}">
+                        <div class="col-md-5">
+                            <label class="form-label">Quem retirou <span class="text-danger" th:if="${compra.tipo.name() == 'PATRIMONIAL'}">*</span></label>
+                            <input type="text" name="retiradoPor" class="form-control" maxlength="120"
+                                   placeholder="Nome / posto de quem retirou o bem"
+                                   th:required="${compra.tipo.name() == 'PATRIMONIAL'}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Setor / unidade de destino <span class="text-danger" th:if="${compra.tipo.name() == 'PATRIMONIAL'}">*</span></label>
+                            <select name="setorEntregaId" class="form-select" th:required="${compra.tipo.name() == 'PATRIMONIAL'}">
+                                <option value="">— Mesmo do solicitante —</option>
+                                <option th:each="s : ${setores}" th:value="${s.id}" th:text="${s.nome}"
+                                        th:selected="${compra.setorSolicitante != null and compra.setorSolicitante.id == s.id}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="enviarPatrimonio" value="true" id="enviarPatrimonio"
+                                       th:checked="${compra.tipo.name() == 'PATRIMONIAL'}"
+                                       th:disabled="${compra.tipo.name() == 'PATRIMONIAL'}">
+                                <input type="hidden" name="enviarPatrimonio" value="true" th:if="${compra.tipo.name() == 'PATRIMONIAL'}">
+                                <label class="form-check-label" for="enviarPatrimonio">Será patrimoniado</label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-text">
+                                <i class="bi bi-building-gear"></i>
+                                Com "será patrimoniado", o recebimento vai para o sistema de Patrimônio com a NF, quem retirou e o setor;
+                                lá aparece a pendência para tombar e completar o cadastro do bem.
+                                <span th:if="${!patrimonioConfigurado}" class="text-warning">
+                                    A integração ainda não está configurada (PATRIMONIO_URL): o envio fica na fila e sai automaticamente depois.
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="mt-4 d-flex gap-2">
-                        <button type="submit" class="btn btn-success">
-                            <i class="bi bi-check2-square"></i> Confirmar e baixar
+                        <button type="submit" class="btn btn-success"
+                                th:disabled="${compra.autorizacaoDiretoria.name() != 'AUTORIZADA'}">
+                            <i class="bi bi-check2-square"></i> Confirmar recebimento e baixar
                         </button>
                         <a th:href="@{|/compras/${compra.id}|}" class="btn btn-outline-secondary">Voltar</a>
                     </div>

@@ -65,6 +65,21 @@ curl -u USUARIO:SENHA -X POST -H "Content-Type: application/json" \
      https://almoxarifado.fasaudefpto.com.br/api/movimentacoes/12/status
 ```
 
+## Compras: perfis, decisão da Diretoria e Patrimônio
+
+- **Perfil `COMPRAS`** (Compras/Almoxarifado): `delva.maria` (chefe), `sarah.luz` e `daisy.dias` (auxiliares),
+  criados no primeiro boot com a senha de `COMPRAS_SENHA_INICIAL`. Só este perfil (e ADMIN) cadastra
+  pré-compras, registra a decisão da Diretoria, recebe/baixa e envia bens ao Patrimônio; `PADRAO` consulta.
+- **Decisão da Diretoria**: toda pré-compra nasce "Aguardando diretoria". Em *Compras → detalhes* o setor
+  registra **Diretoria autorizou** ou **Não autorizou** (com parecer; cancela a pré-compra). A baixa só é
+  liberada quando autorizada. Também pela API: `POST /api/compras/{id}/autorizacao`.
+- **Compra PATRIMONIAL**: bens permanentes, itens descritos livremente, sem movimentar estoque. No
+  recebimento informa-se NF, **quem retirou** e **setor de destino**; o recebimento vai para a fila de
+  envio ao **Gerenciador Patrimonial** (também disponível para compras DIRETAS via "será patrimoniado").
+  Envio automático com reenvio periódico; status e botão "Reenviar agora" nos detalhes da compra.
+  Contrato e o que implementar no Patrimônio: [docs/INTEGRACAO_PATRIMONIO.md](docs/INTEGRACAO_PATRIMONIO.md).
+- Variáveis: `PATRIMONIO_URL`, `PATRIMONIO_USUARIO`, `PATRIMONIO_SENHA`, `PATRIMONIO_REENVIO_MS`, `COMPRAS_SENHA_INICIAL`.
+
 ## Compras: leitura automática da Parte/Ofício
 
 Em **Nova pré-compra** o colaborador pode anexar o PDF da Parte do setor ou do Ofício da unidade.

@@ -41,7 +41,9 @@
                             <option th:each="p : ${perfis}" th:value="${p.name()}" th:text="${p.rotulo}"></option>
                         </select>
                         <div class="form-text">
-                            <strong>Administrador</strong> gerencia usuários; <strong>Padrão</strong> opera o almoxarifado.
+                            <strong>Administrador</strong> gerencia usuários; <strong>Compras/Almoxarifado</strong> cadastra
+                            pré-compras, registra a decisão da Diretoria, recebe e envia bens ao Patrimônio;
+                            <strong>Padrão</strong> opera o almoxarifado e consulta as compras.
                         </div>
                     </div>
 

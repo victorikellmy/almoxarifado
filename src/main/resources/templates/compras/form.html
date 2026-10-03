@@ -88,8 +88,12 @@
                             <label class="form-label">Tipo *</label>
                             <select th:field="*{tipo}" id="tipo" class="form-select" required>
                                 <option value="">— Selecione —</option>
-                                <option th:each="t : ${tipos}" th:value="${t}" th:text="${t}"></option>
+                                <option th:each="t : ${tipos}" th:value="${t}" th:text="${t.rotulo}"></option>
                             </select>
+                            <div class="form-text">
+                                <strong>Estoque</strong> repõe o almoxarifado; <strong>Direta</strong> vai ao setor;
+                                <strong>Patrimonial</strong> é bem permanente — descreva os itens e, no recebimento, segue ao Patrimônio.
+                            </div>
                         </div>
 
                         <div class="col-md-5 d-none" id="setor-wrapper">
@@ -177,13 +181,16 @@
                             <!-- Linhas sugeridas pela leitura do anexo -->
                             <tr class="linha-item" data-repeater-item th:each="it : ${itensSugeridos}">
                                 <td>
-                                    <select name="itemMaterialId" class="form-select" required>
+                                    <select name="itemMaterialId" class="form-select campo-material" required>
                                         <option value="">— Selecione —</option>
                                         <option th:each="m : ${materiais}"
                                                 th:value="${m.id}"
                                                 th:selected="${it.materialId != null and it.materialId == m.id}"
                                                 th:text="${m.nome + ' (' + m.unidadeMedida + ')'}"></option>
                                     </select>
+                                    <input type="text" name="itemDescricao" class="form-control campo-descricao d-none" maxlength="255"
+                                           placeholder="Descrição do bem (ex.: Impressora multifuncional Samsung M2070)"
+                                           th:value="${it.descricao}">
                                     <div class="form-text" th:classappend="${it.casado} ? '' : 'text-warning'">
                                         <i class="bi" th:classappend="${it.casado} ? 'bi-link-45deg' : 'bi-question-circle'"></i>
                                         No documento: <span th:text="${it.descricao}"></span>
@@ -204,12 +211,14 @@
                             <!-- Linha em branco (sem leitura ou sem itens identificados) -->
                             <tr class="linha-item" data-repeater-item th:if="${itensSugeridos == null or #lists.isEmpty(itensSugeridos)}">
                                 <td>
-                                    <select name="itemMaterialId" class="form-select" required>
+                                    <select name="itemMaterialId" class="form-select campo-material" required>
                                         <option value="">— Selecione —</option>
                                         <option th:each="m : ${materiais}"
                                                 th:value="${m.id}"
                                                 th:text="${m.nome + ' (' + m.unidadeMedida + ')'}"></option>
                                     </select>
+                                    <input type="text" name="itemDescricao" class="form-control campo-descricao d-none" maxlength="255"
+                                           placeholder="Descrição do bem (ex.: Impressora multifuncional Samsung M2070)">
                                 </td>
                                 <td><input type="number" name="itemQuantidade" min="1" class="form-control" required></td>
                                 <td><input type="number" name="itemValorUnitario" step="0.01" min="0"
@@ -229,12 +238,14 @@
                     <template id="modelo-linha-item">
                         <tr class="linha-item" data-repeater-item>
                             <td>
-                                <select name="itemMaterialId" class="form-select" required>
+                                <select name="itemMaterialId" class="form-select campo-material" required>
                                     <option value="">— Selecione —</option>
                                     <option th:each="m : ${materiais}"
                                             th:value="${m.id}"
                                             th:text="${m.nome + ' (' + m.unidadeMedida + ')'}"></option>
                                 </select>
+                                <input type="text" name="itemDescricao" class="form-control campo-descricao d-none" maxlength="255"
+                                       placeholder="Descrição do bem (ex.: Impressora multifuncional Samsung M2070)">
                             </td>
                             <td><input type="number" name="itemQuantidade" min="1" class="form-control" required></td>
                             <td><input type="number" name="itemValorUnitario" step="0.01" min="0" class="form-control" value="0"></td>
@@ -282,15 +293,42 @@
         const setorSelect = document.getElementById('setor');
         const setorWrapper = document.getElementById('setor-wrapper');
 
+        /* Setor: obrigatório na DIRETA (RN08); opcional na PATRIMONIAL (destino pode ser
+           informado no recebimento); escondido na ESTOQUE.
+           Itens: PATRIMONIAL descreve o bem livremente; os demais escolhem material do catálogo. */
         function aplicarRegrasDoTipo() {
-            const isDireta = tipoSelect.value === 'DIRETA';
-            setorWrapper.classList.toggle('d-none', !isDireta);
-            setorSelect.disabled = !isDireta;
+            const tipo = tipoSelect.value;
+            const isDireta = tipo === 'DIRETA';
+            const isPatrimonial = tipo === 'PATRIMONIAL';
+            const mostraSetor = isDireta || isPatrimonial;
+            setorWrapper.classList.toggle('d-none', !mostraSetor);
+            setorSelect.disabled = !mostraSetor;
             setorSelect.required = isDireta;
-            if (!isDireta) setorSelect.value = '';
+            if (!mostraSetor) setorSelect.value = '';
+            aplicarModoItens(isPatrimonial, document);
+        }
+        function aplicarModoItens(isPatrimonial, raiz) {
+            raiz.querySelectorAll('.campo-material').forEach((sel) => {
+                sel.classList.toggle('d-none', isPatrimonial);
+                sel.disabled = isPatrimonial;
+                sel.required = !isPatrimonial;
+            });
+            raiz.querySelectorAll('.campo-descricao').forEach((inp) => {
+                inp.classList.toggle('d-none', !isPatrimonial);
+                inp.disabled = !isPatrimonial;
+                inp.required = isPatrimonial;
+            });
+            const th = document.querySelector('#tabela-itens thead th:first-child');
+            if (th) th.textContent = isPatrimonial ? 'Bem (descrição)' : 'Material';
         }
         tipoSelect.addEventListener('change', aplicarRegrasDoTipo);
         aplicarRegrasDoTipo();
+        // Linhas adicionadas depois pelo repeater também seguem o modo atual
+        const tbody = document.querySelector('#tabela-itens tbody');
+        if (tbody) {
+            new MutationObserver(() => aplicarModoItens(tipoSelect.value === 'PATRIMONIAL', tbody))
+                .observe(tbody, { childList: true });
+        }
     })();
 </script>
 <script th:src="@{/js/repeater.js}" defer></script>

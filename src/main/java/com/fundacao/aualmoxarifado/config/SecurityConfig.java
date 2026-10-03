@@ -101,6 +101,8 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.POST, "/api/importacao/**").hasRole("ADMIN")
                     // Aprovar/entregar/rejeitar saídas pelo app é decisão de gestor (RN04).
                     .requestMatchers(HttpMethod.POST, "/api/movimentacoes/*/status").hasRole("ADMIN")
+                    // Decisão da Diretoria pelo app: setor de Compras ou ADMIN.
+                    .requestMatchers(HttpMethod.POST, "/api/compras/*/autorizacao").hasAnyRole("ADMIN", "COMPRAS")
                     // Trilha de auditoria é admin-only na web; a API tem de seguir
                     // a mesma regra, senão um usuário PADRAO (ou a credencial do
                     // app mobile) leria o histórico inteiro de todos.
@@ -135,6 +137,14 @@ public class SecurityConfig {
                     .requestMatchers("/error").permitAll()
                     .requestMatchers("/usuarios/**").hasRole("ADMIN")
                     .requestMatchers("/auditoria/**").hasRole("ADMIN")
+                    // Compras: cadastrar pré-compra, registrar a decisão da Diretoria,
+                    // receber/baixar e enviar ao Patrimônio são do setor de Compras
+                    // (chefe + auxiliares) ou do ADMIN; os demais só consultam.
+                    .requestMatchers("/compras/nova", "/compras/ler-anexo").hasAnyRole("ADMIN", "COMPRAS")
+                    .requestMatchers(HttpMethod.POST, "/compras", "/compras/*/autorizacao",
+                            "/compras/*/baixa", "/compras/*/cancelar",
+                            "/compras/*/patrimonio/reenviar").hasAnyRole("ADMIN", "COMPRAS")
+                    .requestMatchers("/compras/*/baixa").hasAnyRole("ADMIN", "COMPRAS")
                     .requestMatchers("/h2-console/**").hasRole("ADMIN")
                     .anyRequest().authenticated()
             )

@@ -1,5 +1,6 @@
 package com.fundacao.aualmoxarifado.dto;
 
+import com.fundacao.aualmoxarifado.domain.AutorizacaoDiretoria;
 import com.fundacao.aualmoxarifado.domain.Compra;
 import com.fundacao.aualmoxarifado.domain.StatusCompra;
 import com.fundacao.aualmoxarifado.domain.TipoCompra;
@@ -24,7 +25,8 @@ public record CompraResumoDTO(
         BigDecimal valorRealFinal,
         String numeroNotaFiscal,
         int totalItens,
-        String numeroDocumento
+        String numeroDocumento,
+        AutorizacaoDiretoria autorizacaoDiretoria
 ) {
     public static CompraResumoDTO from(Compra c) {
         return new CompraResumoDTO(
@@ -40,6 +42,7 @@ public record CompraResumoDTO(
                 c.getValorRealFinal(),
                 c.getNumeroNotaFiscal(),
                 c.getItens() != null ? c.getItens().size() : 0,
-                c.getNumeroDocumento());
+                c.getNumeroDocumento(),
+                c.getAutorizacaoDiretoria());
     }
 }

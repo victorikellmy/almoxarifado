@@ -33,6 +33,13 @@ public record CompraDetalheDTO(
         LocalDate dataDocumento,
         String assunto,
         String solicitanteDocumento,
+        AutorizacaoDiretoria autorizacaoDiretoria,
+        String autorizadoPor,
+        LocalDateTime autorizadoEm,
+        String parecerDiretoria,
+        String retiradoPor,
+        String setorEntrega,
+        Boolean enviarPatrimonio,
         List<ItemCompraDTO> itens,
         List<AnexoCompraDTO> anexos
 ) {
@@ -48,7 +55,7 @@ public record CompraDetalheDTO(
             Material m = i.getMaterial();
             return new ItemCompraDTO(
                     m != null ? m.getId() : null,
-                    m != null ? m.getNome() : null,
+                    i.getNomeItem(),
                     m != null ? m.getCodigoSku() : null,
                     i.getQuantidade(),
                     i.getValorUnitario(),
@@ -75,6 +82,10 @@ public record CompraDetalheDTO(
                 r.valorEstimado(), r.valorRealFinal(), r.numeroNotaFiscal(), r.totalItens(),
                 c.getNumeroDocumento(), c.getNumeroSgd(), c.getDataDocumento(),
                 c.getAssunto(), c.getSolicitanteDocumento(),
+                c.getAutorizacaoDiretoria(), c.getAutorizadoPor(), c.getAutorizadoEm(), c.getParecerDiretoria(),
+                c.getRetiradoPor(),
+                c.getSetorEntrega() != null ? c.getSetorEntrega().getNome() : null,
+                c.getEnviarPatrimonio(),
                 c.getItens() == null ? List.of() : c.getItens().stream().map(ItemCompraDTO::from).toList(),
                 c.getAnexos() == null ? List.of() : c.getAnexos().stream().map(AnexoCompraDTO::from).toList());
     }

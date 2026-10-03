@@ -4,7 +4,9 @@ import com.fundacao.aualmoxarifado.domain.*;
 import com.fundacao.aualmoxarifado.dto.CompraDetalheDTO;
 import com.fundacao.aualmoxarifado.dto.CompraResumoDTO;
 import com.fundacao.aualmoxarifado.exception.RecursoNaoEncontradoException;
+import com.fundacao.aualmoxarifado.exception.RegraDeNegocioException;
 import com.fundacao.aualmoxarifado.repository.CompraRepository;
+import com.fundacao.aualmoxarifado.service.integracao.PatrimonioIntegracaoService;
 import com.fundacao.aualmoxarifado.repository.MaterialRepository;
 import com.fundacao.aualmoxarifado.repository.SetorRepository;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +48,7 @@ public class CompraService {
     private final SetorRepository setorRepository;
     private final AnexoStorageService anexoStorageService;
     private final MovimentacaoService movimentacaoService;
+    private final PatrimonioIntegracaoService patrimonioIntegracaoService;
 
     // =====================================================================
     // ETAPA 1 — PRÉ-COMPRA (lançamento)
@@ -110,18 +113,36 @@ public class CompraService {
 
         BigDecimal totalEstimado = BigDecimal.ZERO;
 
+        // Toda pré-compra nasce aguardando a decisão da Diretoria.
+        compra.setAutorizacaoDiretoria(AutorizacaoDiretoria.PENDENTE);
+        compra.setAutorizadoPor(null);
+        compra.setAutorizadoEm(null);
+
+        boolean patrimonial = compra.getTipo() == TipoCompra.PATRIMONIAL;
+
         // Resolve Material de cada item e amarra ao agregado Compra.
         for (ItemCompra item : itens) {
-            if (item.getMaterial() == null || item.getMaterial().getId() == null) {
-                throw new IllegalArgumentException("Item sem material selecionado.");
+            boolean temMaterial = item.getMaterial() != null && item.getMaterial().getId() != null;
+            boolean temDescricao = item.getDescricao() != null && !item.getDescricao().isBlank();
+            if (!temMaterial && !(patrimonial && temDescricao)) {
+                throw new IllegalArgumentException(patrimonial
+                        ? "Descreva o bem em cada item da compra patrimonial."
+                        : "Item sem material selecionado.");
             }
             if (item.getQuantidade() == null || item.getQuantidade() <= 0) {
                 throw new IllegalArgumentException("Quantidade do item deve ser maior que zero.");
             }
-            Material material = materialRepository.findById(item.getMaterial().getId())
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Material id=" + item.getMaterial().getId() + " não encontrado."));
-            item.setMaterial(material);
+            if (temMaterial) {
+                Material material = materialRepository.findById(item.getMaterial().getId())
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Material id=" + item.getMaterial().getId() + " não encontrado."));
+                item.setMaterial(material);
+            } else {
+                item.setMaterial(null);
+            }
+            if (temDescricao) {
+                item.setDescricao(item.getDescricao().trim());
+            }
             if (item.getValorUnitario() == null) {
                 item.setValorUnitario(BigDecimal.ZERO);
             }
@@ -171,6 +192,32 @@ public class CompraService {
                            String numeroNF,
                            BigDecimal valorRealFinal,
                            MultipartFile pdfNotaFiscal) {
+        return darBaixa(compraId, numeroNF, valorRealFinal, pdfNotaFiscal, new DadosRecebimento(null, null, false, null));
+    }
+
+    /**
+     * Dados complementares informados na tela de recebimento.
+     *
+     * @param retiradoPor       quem retirou a mercadoria (obrigatório quando vai para o Patrimônio)
+     * @param setorEntregaId    setor/unidade que recebeu (default: setor solicitante)
+     * @param enviarPatrimonio  "será patrimoniado": cria o envio para o sistema de Patrimônio
+     * @param usuario           login de quem está dando a baixa
+     */
+    public record DadosRecebimento(String retiradoPor, Long setorEntregaId, boolean enviarPatrimonio, String usuario) {}
+
+    /**
+     * Variante completa da baixa (RF15/RF16 + fluxo da Diretoria + Patrimônio):
+     * exige a compra AUTORIZADA pela Diretoria; compras PATRIMONIAIS não mexem em
+     * estoque nem consumo; com "será patrimoniado" (obrigatório para PATRIMONIAL,
+     * opcional para DIRETA) registra o envio ao Patrimônio na mesma transação —
+     * o POST HTTP acontece depois, fora dela ({@code PatrimonioIntegracaoService}).
+     */
+    @Transactional
+    public Compra darBaixa(Long compraId,
+                           String numeroNF,
+                           BigDecimal valorRealFinal,
+                           MultipartFile pdfNotaFiscal,
+                           DadosRecebimento dados) {
 
         Compra compra = compraRepository.findById(compraId)
                 .orElseThrow(() -> new IllegalArgumentException("Compra não encontrada."));
@@ -180,6 +227,11 @@ public class CompraService {
                     "Só é possível dar baixa em compras com status AGUARDANDO_COMPRA. Status atual: "
                             + compra.getStatus());
         }
+        if (compra.getAutorizacaoDiretoria() != AutorizacaoDiretoria.AUTORIZADA) {
+            throw new RegraDeNegocioException(
+                    "A compra #" + compra.getId() + " ainda não foi autorizada pela Diretoria. "
+                            + "Registre a decisão da Diretoria antes de dar baixa.");
+        }
         if (numeroNF == null || numeroNF.isBlank()) {
             throw new IllegalArgumentException("Informe o número da Nota Fiscal.");
         }
@@ -187,16 +239,44 @@ public class CompraService {
             throw new IllegalArgumentException("Valor real final inválido.");
         }
 
+        boolean patrimonial = compra.getTipo() == TipoCompra.PATRIMONIAL;
+        boolean enviarPatrimonio = patrimonial || (dados != null && dados.enviarPatrimonio());
+        if (enviarPatrimonio && compra.getTipo() == TipoCompra.ESTOQUE) {
+            throw new RegraDeNegocioException("Compra de ESTOQUE não pode ser enviada ao Patrimônio.");
+        }
+
+        // Destino e retirada
+        Setor setorEntrega = compra.getSetorSolicitante();
+        if (dados != null && dados.setorEntregaId() != null) {
+            setorEntrega = setorRepository.findById(dados.setorEntregaId())
+                    .orElseThrow(() -> new IllegalArgumentException("Setor de entrega não encontrado."));
+        }
+        String retiradoPor = dados == null || dados.retiradoPor() == null ? null : dados.retiradoPor().trim();
+        if (enviarPatrimonio) {
+            if (retiradoPor == null || retiradoPor.isBlank()) {
+                throw new RegraDeNegocioException("Informe quem retirou o bem para enviá-lo ao Patrimônio.");
+            }
+            if (setorEntrega == null) {
+                throw new RegraDeNegocioException("Informe o setor/unidade que recebeu o bem para enviá-lo ao Patrimônio.");
+            }
+        }
+
         compra.setNumeroNotaFiscal(numeroNF.trim());
         compra.setValorRealFinal(valorRealFinal);
         compra.setDataRecebimento(LocalDateTime.now());
+        compra.setRetiradoPor(retiradoPor == null || retiradoPor.isBlank() ? null : retiradoPor);
+        compra.setSetorEntrega(setorEntrega);
+        compra.setEnviarPatrimonio(enviarPatrimonio);
+        compra.setRecebidoPor(dados != null ? dados.usuario() : null);
 
         // Despacha a regra que move o estoque conforme o tipo da compra.
         if (compra.getTipo() == TipoCompra.ESTOQUE) {
             baixarComoEntradaDeEstoque(compra);
-        } else {
+        } else if (compra.getTipo() == TipoCompra.DIRETA) {
             baixarComoRepasseDireto(compra);
         }
+        // PATRIMONIAL: bem permanente — não entra no estoque nem no consumo do setor;
+        // o registro de destino fica na compra e segue para o Patrimônio.
 
         // Status só vira COMPRA_REALIZADA depois que as movimentações já rodaram
         // — assim, qualquer falha da regra aborta a transação ANTES de marcar o
@@ -208,11 +288,49 @@ public class CompraService {
             anexar(atualizada, pdfNotaFiscal, TipoAnexoCompra.NOTA_FISCAL);
         }
 
-        log.info("[Compras] Baixa concluída #{} (tipo={}, NF={}, valor={}).",
+        if (enviarPatrimonio) {
+            patrimonioIntegracaoService.registrarEnvio(atualizada);
+        }
+
+        log.info("[Compras] Baixa concluída #{} (tipo={}, NF={}, valor={}, patrimonio={}).",
                 atualizada.getId(), atualizada.getTipo(),
-                atualizada.getNumeroNotaFiscal(), atualizada.getValorRealFinal());
+                atualizada.getNumeroNotaFiscal(), atualizada.getValorRealFinal(), enviarPatrimonio);
 
         return atualizada;
+    }
+
+    // =====================================================================
+    // ETAPA 2 — DECISÃO DA DIRETORIA (registrada pelo setor de Compras)
+    // =====================================================================
+
+    /**
+     * Registra no sistema se a Diretoria autorizou ou não a pré-compra.
+     * NÃO autorizada → a pré-compra é cancelada, guardando o parecer.
+     */
+    @Transactional
+    public Compra registrarAutorizacao(Long compraId, AutorizacaoDiretoria decisao, String parecer, String usuario) {
+        if (decisao == null || decisao == AutorizacaoDiretoria.PENDENTE) {
+            throw new IllegalArgumentException("Informe a decisão da Diretoria (autorizada ou não autorizada).");
+        }
+        Compra compra = buscarPorId(compraId);
+        if (compra.getStatus() != StatusCompra.AGUARDANDO_COMPRA) {
+            throw new RegraDeNegocioException("A decisão da Diretoria só pode ser registrada em pré-compras aguardando compra "
+                    + "(status atual: " + compra.getStatus() + ").");
+        }
+        String p = parecer == null ? null : parecer.trim();
+        if (decisao == AutorizacaoDiretoria.NAO_AUTORIZADA && (p == null || p.length() < 3)) {
+            throw new RegraDeNegocioException("Informe o motivo/parecer da Diretoria para a não autorização.");
+        }
+        compra.setAutorizacaoDiretoria(decisao);
+        compra.setAutorizadoPor(usuario);
+        compra.setAutorizadoEm(LocalDateTime.now());
+        compra.setParecerDiretoria(p == null || p.isBlank() ? null : (p.length() > 500 ? p.substring(0, 497) + "..." : p));
+        if (decisao == AutorizacaoDiretoria.NAO_AUTORIZADA) {
+            compra.setStatus(StatusCompra.CANCELADA);
+        }
+        Compra salva = compraRepository.save(compra);
+        log.info("[Compras] Decisão da Diretoria registrada na compra #{}: {} por {}.", compraId, decisao, usuario);
+        return salva;
     }
 
     /**

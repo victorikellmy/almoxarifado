@@ -43,6 +43,7 @@
                             <th>#</th>
                             <th>Solicitada em</th>
                             <th>Tipo</th>
+                            <th>Diretoria</th>
                             <th>Setor solicitante</th>
                             <th class="text-end">Itens</th>
                             <th class="text-end">Valor estimado</th>
@@ -69,6 +70,12 @@
                                 <span th:if="${c.tipo.name() == 'ESTOQUE'}" class="badge bg-secondary">
                                     <i class="bi bi-boxes"></i> Estoque
                                 </span>
+                                <span th:if="${c.tipo.name() == 'PATRIMONIAL'}" class="badge badge-patrimonial">
+                                    <i class="bi bi-building-gear"></i> Patrimonial
+                                </span>
+                            </td>
+                            <td>
+                                <span th:replace="~{fragments/status :: pill(${c.autorizacaoDiretoria.name()})}"></span>
                             </td>
                             <td th:text="${c.setorSolicitante != null ? c.setorSolicitante.nome : '—'}"></td>
                             <td class="text-end" th:text="${#lists.size(c.itens)}"></td>
@@ -92,15 +99,20 @@
                                 <a class="btn btn-sm btn-outline-secondary" th:href="@{|/compras/${c.id}|}">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <a th:if="${c.status.name() == 'AGUARDANDO_COMPRA'}"
+                                <a th:if="${c.status.name() == 'AGUARDANDO_COMPRA' and c.autorizacaoDiretoria.name() == 'AUTORIZADA'}"
                                    class="btn btn-sm btn-success"
                                    th:href="@{|/compras/${c.id}/baixa|}">
                                     <i class="bi bi-check2-square"></i> Baixar
                                 </a>
+                                <a th:if="${c.status.name() == 'AGUARDANDO_COMPRA' and c.autorizacaoDiretoria.name() == 'PENDENTE'}"
+                                   class="btn btn-sm btn-outline-warning"
+                                   th:href="@{|/compras/${c.id}|}" title="Registrar a decisão da Diretoria">
+                                    <i class="bi bi-hand-thumbs-up"></i> Diretoria
+                                </a>
                             </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(compras)}">
-                            <td colspan="10" class="empty-state">
+                            <td colspan="11" class="empty-state">
                                 <i class="bi bi-cart-x d-block mb-2"></i>
                                 Nenhuma compra encontrada.
                             </td>

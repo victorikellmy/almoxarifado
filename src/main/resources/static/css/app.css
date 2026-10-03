@@ -2006,3 +2006,16 @@ a > .stat-card:hover { transform: translateY(-1px); }
 
 /* Linhas vazias e placeholders com cor própria no claro */
 .empty-state { color: var(--text-muted); padding: 2.5rem 1rem; text-align: center; }
+
+/* ===== Compras: decisão da Diretoria e tipo patrimonial ===== */
+.status-pill.status-autorizada     { background: #d1fae5; color: #198754; }
+.status-pill.status-nao_autorizada { background: #fee2e2; color: #dc3545; }
+.status-pill.status-pendente       { background: #fef3c7; color: #b45309; }
+.status-pill.status-enviado        { background: #d1fae5; color: #198754; }
+.status-pill.status-erro           { background: #fee2e2; color: #dc3545; }
+[data-theme="dark"] .status-pill.status-autorizada,
+[data-theme="dark"] .status-pill.status-enviado        { background: rgba(16,185,129,.18); color: #6ee7b7; }
+[data-theme="dark"] .status-pill.status-nao_autorizada,
+[data-theme="dark"] .status-pill.status-erro           { background: rgba(239,68,68,.18);  color: #fca5a5; }
+[data-theme="dark"] .status-pill.status-pendente       { background: rgba(245,158,11,.18); color: #fcd34d; }
+.badge.badge-patrimonial { background: var(--primary-600); color: #fff; }

@@ -108,6 +108,44 @@ public class Compra {
     @Column(name = "solicitante_documento", length = 255)
     private String solicitanteDocumento;
 
+    // ----- Autorização da Diretoria (registrada pelo setor de Compras) -----
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "autorizacao_diretoria", nullable = false, length = 20)
+    @Builder.Default
+    private AutorizacaoDiretoria autorizacaoDiretoria = AutorizacaoDiretoria.PENDENTE;
+
+    /** Login de quem registrou a decisão da Diretoria no sistema. */
+    @Column(name = "autorizado_por", length = 120)
+    private String autorizadoPor;
+
+    @Column(name = "autorizado_em")
+    private LocalDateTime autorizadoEm;
+
+    /** Parecer/observação da Diretoria (ex.: motivo da não autorização). */
+    @Column(name = "parecer_diretoria", length = 500)
+    private String parecerDiretoria;
+
+    // ----- Recebimento / destino do bem (informados na baixa) -----
+
+    /** Quem retirou a mercadoria no almoxarifado. */
+    @Column(name = "retirado_por", length = 120)
+    private String retiradoPor;
+
+    /** Setor/unidade que recebeu o bem (default: setor solicitante). */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "setor_entrega_id")
+    private Setor setorEntrega;
+
+    /** Marcado na baixa quando o bem deve ser tombado: dispara o envio ao Patrimônio. */
+    @Column(name = "enviar_patrimonio", nullable = false)
+    @Builder.Default
+    private Boolean enviarPatrimonio = false;
+
+    /** Login de quem efetivou a baixa (recebimento). */
+    @Column(name = "recebido_por", length = 120)
+    private String recebidoPor;
+
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 25)

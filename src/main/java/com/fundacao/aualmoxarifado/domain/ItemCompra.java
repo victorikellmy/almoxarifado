@@ -31,11 +31,17 @@ public class ItemCompra {
     @JoinColumn(name = "compra_id", nullable = false)
     private Compra compra;
 
-    /** Material que está sendo comprado. */
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "material_id", nullable = false)
+    /**
+     * Material do catálogo de consumo. Obrigatório em compras ESTOQUE/DIRETA;
+     * opcional em compras PATRIMONIAIS, cujos itens são descritos em {@link #descricao}.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "material_id")
     private Material material;
+
+    /** Descrição livre do item (bens patrimoniais) ou complemento ao material. */
+    @Column(length = 255)
+    private String descricao;
 
     @NotNull
     @Positive(message = "Quantidade do item deve ser maior que zero")
@@ -48,6 +54,13 @@ public class ItemCompra {
     @Column(nullable = false, precision = 12, scale = 2)
     @Builder.Default
     private BigDecimal valorUnitario = BigDecimal.ZERO;
+
+    /** Nome a exibir: material do catálogo quando houver, senão a descrição livre. */
+    @Transient
+    public String getNomeItem() {
+        if (material != null && material.getNome() != null) return material.getNome();
+        return descricao != null ? descricao : "—";
+    }
 
     /** Subtotal do item (quantidade × valorUnitario), calculado no Service. */
     @Transient

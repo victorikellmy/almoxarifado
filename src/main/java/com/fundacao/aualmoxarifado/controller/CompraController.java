@@ -7,8 +7,11 @@ import com.fundacao.aualmoxarifado.service.AnexoStorageService;
 import com.fundacao.aualmoxarifado.service.CompraService;
 import com.fundacao.aualmoxarifado.service.LeituraParteCompraService;
 import com.fundacao.aualmoxarifado.service.extracao.ExtracaoIaService;
+import com.fundacao.aualmoxarifado.service.integracao.PatrimonioIntegracaoService;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -53,6 +56,7 @@ public class CompraController {
     private final AnexoStorageService anexoStorageService;
     private final LeituraParteCompraService leituraParteCompraService;
     private final ExtracaoIaService extracaoIaService;
+    private final PatrimonioIntegracaoService patrimonioIntegracaoService;
 
     /** Prefixo da chave de sessão onde o PDF lido fica até a pré-compra ser salva. */
     private static final String SESSAO_LEITURA = "compras.leitura.";
@@ -132,7 +136,8 @@ public class CompraController {
     @PostMapping
     public String salvarPreCompra(@ModelAttribute Compra compra,
                                   @RequestParam(required = false) Long setorSolicitanteId,
-                                  @RequestParam(name = "itemMaterialId", required = false) List<Long> materiaisIds,
+                                  @RequestParam(name = "itemMaterialId", required = false) List<String> materiaisIds,
+                                  @RequestParam(name = "itemDescricao", required = false) List<String> descricoes,
                                   @RequestParam(name = "itemQuantidade", required = false) List<Integer> quantidades,
                                   @RequestParam(name = "itemValorUnitario", required = false) List<BigDecimal> valoresUnit,
                                   @RequestParam(name = "pdfSolicitacao", required = false) MultipartFile pdfSolicitacao,
@@ -155,7 +160,7 @@ public class CompraController {
                 }
             }
 
-            List<ItemCompra> itens = montarItens(materiaisIds, quantidades, valoresUnit);
+            List<ItemCompra> itens = montarItens(materiaisIds, descricoes, quantidades, valoresUnit);
             compraService.criarPreCompra(compra, itens, pdfSolicitacao, pdfLido);
 
             if (leituraId != null && !leituraId.isBlank()) {
@@ -181,11 +186,13 @@ public class CompraController {
     // BAIXA (recebimento da NF)
     // =====================================================================
 
-    /** Tela de recebimento — abre os campos de NF + upload do PDF. */
+    /** Tela de recebimento — NF, valor real, PDF, quem retirou/setor e "será patrimoniado". */
     @GetMapping("/{id}/baixa")
     public String telaBaixa(@PathVariable Long id, Model model) {
         Compra compra = compraService.buscarPorId(id);
         model.addAttribute("compra", compra);
+        model.addAttribute("setores", setorRepository.findAll());
+        model.addAttribute("patrimonioConfigurado", patrimonioIntegracaoService.isConfigurado());
         return "compras/recebimento";
     }
 
@@ -194,15 +201,73 @@ public class CompraController {
                                 @RequestParam String numeroNF,
                                 @RequestParam BigDecimal valorRealFinal,
                                 @RequestParam(required = false) MultipartFile pdfNotaFiscal,
+                                @RequestParam(required = false) String retiradoPor,
+                                @RequestParam(required = false) Long setorEntregaId,
+                                @RequestParam(required = false, defaultValue = "false") boolean enviarPatrimonio,
+                                Authentication authentication,
+                                RedirectAttributes ra,
                                 Model model) {
         try {
-            compraService.darBaixa(id, numeroNF, valorRealFinal, pdfNotaFiscal);
+            var dados = new CompraService.DadosRecebimento(retiradoPor, setorEntregaId, enviarPatrimonio,
+                    authentication != null ? authentication.getName() : null);
+            Compra baixada = compraService.darBaixa(id, numeroNF, valorRealFinal, pdfNotaFiscal, dados);
+
+            if (Boolean.TRUE.equals(baixada.getEnviarPatrimonio())) {
+                // Fora da transação da baixa: falha de rede não desfaz o recebimento.
+                var envio = patrimonioIntegracaoService.enviar(id);
+                ra.addFlashAttribute(envio.getStatus() == StatusEnvioPatrimonio.ENVIADO ? "sucesso" : "aviso",
+                        envio.getStatus() == StatusEnvioPatrimonio.ENVIADO
+                                ? "Compra recebida e enviada ao Patrimônio para tombamento."
+                                : "Compra recebida. Envio ao Patrimônio pendente: " + envio.getUltimoErro());
+            } else {
+                ra.addFlashAttribute("sucesso", "Compra recebida e baixada.");
+            }
             return "redirect:/compras/" + id;
         } catch (RuntimeException ex) {
             model.addAttribute("erro", ex.getMessage());
             model.addAttribute("compra", compraService.buscarPorId(id));
+            model.addAttribute("setores", setorRepository.findAll());
+            model.addAttribute("patrimonioConfigurado", patrimonioIntegracaoService.isConfigurado());
             return "compras/recebimento";
         }
+    }
+
+    // =====================================================================
+    // DECISÃO DA DIRETORIA (perfil COMPRAS/ADMIN)
+    // =====================================================================
+
+    @PostMapping("/{id}/autorizacao")
+    public String registrarAutorizacao(@PathVariable Long id,
+                                       @RequestParam AutorizacaoDiretoria decisao,
+                                       @RequestParam(required = false) String parecer,
+                                       Authentication authentication,
+                                       RedirectAttributes ra) {
+        try {
+            compraService.registrarAutorizacao(id, decisao, parecer,
+                    authentication != null ? authentication.getName() : null);
+            ra.addFlashAttribute("sucesso", decisao == AutorizacaoDiretoria.AUTORIZADA
+                    ? "Autorização da Diretoria registrada. A compra pode ser recebida."
+                    : "Não autorização registrada: a pré-compra foi cancelada.");
+        } catch (RuntimeException ex) {
+            ra.addFlashAttribute("erro", ex.getMessage());
+        }
+        return "redirect:/compras/" + id;
+    }
+
+    /** Reenvio manual ao Patrimônio (quando o envio automático falhou). */
+    @PostMapping("/{id}/patrimonio/reenviar")
+    public String reenviarPatrimonio(@PathVariable Long id, RedirectAttributes ra) {
+        try {
+            var envio = patrimonioIntegracaoService.enviar(id);
+            if (envio.getStatus() == StatusEnvioPatrimonio.ENVIADO) {
+                ra.addFlashAttribute("sucesso", "Recebimento enviado ao Patrimônio.");
+            } else {
+                ra.addFlashAttribute("erro", "Envio ao Patrimônio não concluído: " + envio.getUltimoErro());
+            }
+        } catch (RuntimeException ex) {
+            ra.addFlashAttribute("erro", ex.getMessage());
+        }
+        return "redirect:/compras/" + id;
     }
 
     // =====================================================================
@@ -212,6 +277,7 @@ public class CompraController {
     @GetMapping("/{id}")
     public String detalhes(@PathVariable Long id, Model model) {
         model.addAttribute("compra", compraService.buscarPorId(id));
+        model.addAttribute("envioPatrimonio", patrimonioIntegracaoService.envioDa(id).orElse(null));
         return "compras/detalhes";
     }
 
@@ -259,24 +325,30 @@ public class CompraController {
     }
 
     /**
-     * Converte os arrays paralelos do form (id, qtd, valor) em uma lista de
-     * {@link ItemCompra} ainda não persistidos. A validação fina (qtd > 0,
-     * material existente) acontece no Service.
+     * Converte os arrays paralelos do form (material, descrição, qtd, valor) em uma
+     * lista de {@link ItemCompra} ainda não persistidos. Em compras PATRIMONIAIS a
+     * linha pode vir sem material (só descrição). A validação fina (qtd > 0,
+     * material existente, descrição obrigatória) acontece no Service.
      */
-    private List<ItemCompra> montarItens(List<Long> materiaisIds,
+    private List<ItemCompra> montarItens(List<String> materiaisIds,
+                                         List<String> descricoes,
                                          List<Integer> quantidades,
                                          List<BigDecimal> valoresUnit) {
         List<ItemCompra> itens = new ArrayList<>();
-        if (materiaisIds == null || materiaisIds.isEmpty()) {
-            return itens;
-        }
-        for (int i = 0; i < materiaisIds.size(); i++) {
-            Long matId = materiaisIds.get(i);
-            if (matId == null) {
-                continue; // linha vazia — usuário removeu
+        int linhas = Math.max(materiaisIds == null ? 0 : materiaisIds.size(),
+                              descricoes == null ? 0 : descricoes.size());
+        for (int i = 0; i < linhas; i++) {
+            String matIdStr = materiaisIds != null && i < materiaisIds.size() ? materiaisIds.get(i) : null;
+            String descricao = descricoes != null && i < descricoes.size() ? descricoes.get(i) : null;
+            Long matId = (matIdStr == null || matIdStr.isBlank()) ? null : Long.valueOf(matIdStr.trim());
+            if (matId == null && (descricao == null || descricao.isBlank())) {
+                continue; // linha vazia — usuário removeu ou não preencheu
             }
-            Material m = new Material();
-            m.setId(matId);
+            Material m = null;
+            if (matId != null) {
+                m = new Material();
+                m.setId(matId);
+            }
 
             Integer qtd = (quantidades != null && i < quantidades.size()) ? quantidades.get(i) : null;
             BigDecimal valor = (valoresUnit != null && i < valoresUnit.size())
@@ -285,6 +357,7 @@ public class CompraController {
 
             itens.add(ItemCompra.builder()
                     .material(m)
+                    .descricao(descricao == null || descricao.isBlank() ? null : descricao.trim())
                     .quantidade(qtd)
                     .valorUnitario(valor != null ? valor : BigDecimal.ZERO)
                     .build());
