@@ -33,6 +33,15 @@
                         <input type="hidden" name="status" value="ENTREGUE">
                         <button class="btn btn-success"><i class="bi bi-truck"></i> Marcar como entregue</button>
                     </form>
+                    <!-- RN04: rejeitar exige motivo; de APROVADO devolve o estoque -->
+                    <form th:if="${movimentacao.tipo.name() == 'SAIDA' and (movimentacao.status.name() == 'PENDENTE_APROVACAO' or movimentacao.status.name() == 'APROVADO')}"
+                          th:action="@{|/movimentacoes/${movimentacao.id}/status|}" method="post"
+                          class="d-flex gap-2">
+                        <input type="hidden" name="status" value="REJEITADO">
+                        <input type="text" name="motivo" class="form-control" placeholder="Motivo da rejeição"
+                               minlength="3" maxlength="255" required style="min-width:220px">
+                        <button class="btn btn-outline-danger text-nowrap"><i class="bi bi-x-circle"></i> Rejeitar</button>
+                    </form>
                 </div>
             </div>
 
