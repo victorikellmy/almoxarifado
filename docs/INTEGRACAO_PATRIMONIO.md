@@ -1,8 +1,18 @@
 # Integração Almoxarifado → Gerenciador Patrimonial
 
-> Guia para implementar o lado do **Patrimônio** (`C:\Users\victorikellmy\IdeaProjects\Gerenciador_Patrimonial`,
+> Guia do lado do **Patrimônio** (`C:\Users\victorikellmy\IdeaProjects\Gerenciador_Patrimonial`,
 > branch `main`, pacote `com.fundacao.gerenciador_patrimonial`). O lado do Almoxarifado já está pronto
 > e envia os dados conforme abaixo.
+>
+> **Status (03/10/2026): implementado nos dois lados.** No Patrimônio: `IntegracaoAlmoxarifadoController`,
+> `IntegracaoAlmoxarifadoService`, `PendenciaPatrimoniamento` (migration `V6__pendencia_patrimoniamento.sql`),
+> perfil `INTEGRACAO`, telas `/pendencias`, badge/sino na navbar e teste `IntegracaoAlmoxarifadoFluxoTest`.
+> O usuário técnico é criado automaticamente pelo `IntegracaoBootstrapRunner` quando o Patrimônio sobe com
+> `INTEGRACAO_ALMOXARIFADO_SENHA` (login padrão `integracao.almoxarifado`, ajustável por
+> `INTEGRACAO_ALMOXARIFADO_LOGIN`) — use os mesmos valores em `PATRIMONIO_USUARIO` / `PATRIMONIO_SENHA`.
+> Resposta ao reenvio do mesmo `compraId`: `200` com a pendência existente. Pendências com vários itens ou
+> quantidade > 1 geram um bem por unidade ("Patrimoniar e ir para a próxima unidade"); o operador também pode
+> "Concluir manualmente" e um ADMINISTRADOR pode "Descartar".
 
 ## Fluxo de negócio
 
