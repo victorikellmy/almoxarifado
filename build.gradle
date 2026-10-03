@@ -38,8 +38,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
     // Migrations versionadas do schema PostgreSQL (src/main/resources/db/migration)
-    // No Spring Boot 4 a auto-configuracao do Flyway mora no modulo
-    // spring-boot-flyway; sem ele o flyway-core fica inerte no classpath.
+    // No Boot 4 a autoconfiguração do Flyway vive num módulo próprio — sem ele
+    // as migrations não rodam no boot, mesmo com o flyway-core no classpath.
     implementation 'org.springframework.boot:spring-boot-flyway'
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
@@ -47,6 +47,12 @@ dependencies {
     // ---------- Security (login + perfis ADMIN/PADRAO) ----------
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.thymeleaf.extras:thymeleaf-extras-springsecurity6'
+
+    // ---------- Leitura do PDF da Parte/Oficio em "Nova pre-compra" ----------
+    // PDFBox extrai o texto; o SDK da Anthropic e a leitura assistida por IA
+    // (opcional: compras.ia.habilitada=true + ANTHROPIC_API_KEY) para PDFs escaneados.
+    implementation 'org.apache.pdfbox:pdfbox:3.0.4'
+    implementation 'com.anthropic:anthropic-java:2.34.0'
 
     // ---------- Planilhas e exporters (CSV/PDF/XLSX) ----------
     // POI atende tanto a importação em massa de materiais (.xlsx/.xls) quanto

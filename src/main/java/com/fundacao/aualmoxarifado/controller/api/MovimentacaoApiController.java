@@ -2,9 +2,12 @@ package com.fundacao.aualmoxarifado.controller.api;
 
 import com.fundacao.aualmoxarifado.domain.StatusMovimentacao;
 import com.fundacao.aualmoxarifado.domain.TipoMovimentacao;
+import com.fundacao.aualmoxarifado.dto.MovimentacaoDetalheDTO;
 import com.fundacao.aualmoxarifado.dto.MovimentacaoResumoDTO;
 import com.fundacao.aualmoxarifado.dto.PageResponse;
+import com.fundacao.aualmoxarifado.dto.request.AlterarStatusRequestDTO;
 import com.fundacao.aualmoxarifado.service.MovimentacaoService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +15,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -53,5 +59,23 @@ public class MovimentacaoApiController {
         // Mapeamento para DTO acontece no service, dentro da transação read-only.
         return PageResponse.of(
                 service.listarResumo(tipo, status, materialId, setorId, inicio, fim, pageable));
+    }
+
+    /** Detalhe com a lista de itens (material, SKU, unidade, quantidade). */
+    @GetMapping("/{id}")
+    public MovimentacaoDetalheDTO buscar(@PathVariable Long id) {
+        return service.buscarDetalhe(id);
+    }
+
+    /**
+     * Aprovar / entregar / rejeitar uma saída pelo app (somente ADMIN — regra
+     * em {@code SecurityConfig}). As transições válidas e o estoque são
+     * tratados em {@link MovimentacaoService#alterarStatus(Long, StatusMovimentacao, String)}.
+     */
+    @PostMapping("/{id}/status")
+    public MovimentacaoDetalheDTO alterarStatus(@PathVariable Long id,
+                                                @Valid @RequestBody AlterarStatusRequestDTO request) {
+        service.alterarStatus(id, request.status(), request.motivo());
+        return service.buscarDetalhe(id);
     }
 }

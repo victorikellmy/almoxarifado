@@ -47,21 +47,23 @@
     --info-bg:      #e0f2fe;
     --info-fg:      #075985;
 
-    /* Superfícies */
-    --bg-page:    var(--slate-50);
-    --bg-surface: #ffffff;
-    --bg-muted:   var(--slate-100);
-    --bg-hover:   var(--slate-100);
+    /* Superfícies — modo claro "quente": bege mesclado com o lilás primário.
+       Fundo levemente bege (menos brilho que o branco/slate puro), cartões em
+       branco-creme e cinzas com um toque de lilás para a leitura cansar menos. */
+    --bg-page:    #f4f0ec;
+    --bg-surface: #fffdfa;
+    --bg-muted:   #f1ebea;
+    --bg-hover:   #f0e9ee;
 
-    /* Bordas */
-    --border:       var(--slate-200);
-    --border-hover: var(--slate-300);
+    /* Bordas — tom neutro-quente puxado para o lilás */
+    --border:       #e5dddf;
+    --border-hover: #cfc2d2;
     --border-focus: var(--primary-500);
 
-    /* Texto */
-    --text-primary:   var(--slate-900);
-    --text-secondary: var(--slate-600);
-    --text-muted:     var(--slate-500);
+    /* Texto — grafite com base lilás (primary-900) em vez do azul-marinho slate */
+    --text-primary:   #2b2435;
+    --text-secondary: #5a4f66;
+    --text-muted:     #7b7085;
     --text-inverse:   #ffffff;
 
     /* Espaçamentos */
@@ -1907,3 +1909,100 @@ a > .stat-card:hover { transform: translateY(-1px); }
     background:rgba(255,255,255,.15); margin-bottom:.75rem;
 }
 .login-page .brand-icon i { font-size:2.5rem; color:#fff; }
+
+/* ============================================================
+   Alinhamento e ritmo visual — cards, títulos de seção e
+   pares rótulo/valor (dl.row) usados em Compras, Movimentações
+   e Dashboard. Vale para os dois temas (usa só tokens).
+   ============================================================ */
+
+/* Sombras do modo claro acompanham o lilás (menos "preto" sobre bege) */
+:root:not([data-theme="dark"]) {
+    --shadow-1: 0 1px 2px rgba(62, 49, 86, 0.05), 0 1px 3px rgba(62, 49, 86, 0.06);
+    --shadow-2: 0 4px 6px -1px rgba(62, 49, 86, 0.09), 0 2px 4px -2px rgba(62, 49, 86, 0.06);
+    --shadow-3: 0 10px 15px -3px rgba(62, 49, 86, 0.11), 0 4px 6px -4px rgba(62, 49, 86, 0.08);
+}
+
+/* Título da página (h2) com o mesmo peso/tamanho do .page-title e badge centralizado */
+.page-header h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+}
+.page-header > div:first-child { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+.page-header > div:first-child > h2 { margin-right: 0 !important; }
+.page-header .btn { display: inline-flex; align-items: center; gap: .4rem; }
+
+/* Títulos de seção dentro dos cards (h6 "DADOS DA COMPRA", "VALORES", ...) */
+.card-pad > h6,
+.card .card-pad h6.text-uppercase,
+.table-card-head h5 {
+    margin-top: 0;
+}
+.card-pad > h6.text-uppercase {
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .08em !important;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+    padding-bottom: .5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Pares rótulo/valor: mesma linha de base, separador leve e rótulo com peso médio */
+.card-pad dl.row { margin: 0; row-gap: 0; }
+.card-pad dl.row > dt,
+.card-pad dl.row > dd {
+    margin: 0;
+    padding: .5rem 0;
+    border-bottom: 1px solid var(--border);
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    min-height: 2.4rem;
+}
+.card-pad dl.row > dt {
+    font-weight: 500;
+    color: var(--text-muted);
+}
+.card-pad dl.row > dd {
+    font-weight: 500;
+    color: var(--text-primary);
+    word-break: break-word;
+}
+.card-pad dl.row > dd.text-end { justify-content: flex-end; font-variant-numeric: tabular-nums; }
+.card-pad dl.row > :nth-last-child(-n+2) { border-bottom: none; }
+/* subtítulo de grupo dentro da dl (ex.: "Documento de origem") */
+.card-pad dl.row > dt.col-12 {
+    border-bottom: none;
+    min-height: 0;
+    padding: .9rem 0 .25rem;
+    font-size: .72rem;
+    letter-spacing: .08em;
+}
+
+/* Cards lado a lado com a mesma altura e espaçamento uniforme */
+.row.g-3 > [class*="col-"] > .card,
+.row.g-4 > [class*="col-"] > .card { height: 100%; }
+.card + .card { margin-top: 0; }
+
+/* Cabeçalho de cards-tabela ("Itens", "1 linha(s)") alinhado ao padding da tabela */
+.table-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+.table-card-head h5 { font-size: 1rem; margin: 0; }
+.table-card-head small { display: block; margin-top: 2px; }
+.table-card .table-responsive { border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
+
+/* Números sempre tabulares nas colunas alinhadas à direita */
+.table td.text-end, .table th.text-end { font-variant-numeric: tabular-nums; }
+
+/* Linhas vazias e placeholders com cor própria no claro */
+.empty-state { color: var(--text-muted); padding: 2.5rem 1rem; text-align: center; }

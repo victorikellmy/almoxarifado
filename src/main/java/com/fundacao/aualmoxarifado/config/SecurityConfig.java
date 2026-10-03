@@ -99,6 +99,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                     .requestMatchers(HttpMethod.DELETE, "/api/**").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/api/importacao/**").hasRole("ADMIN")
+                    // Aprovar/entregar/rejeitar saídas pelo app é decisão de gestor (RN04).
+                    .requestMatchers(HttpMethod.POST, "/api/movimentacoes/*/status").hasRole("ADMIN")
                     // Trilha de auditoria é admin-only na web; a API tem de seguir
                     // a mesma regra, senão um usuário PADRAO (ou a credencial do
                     // app mobile) leria o histórico inteiro de todos.
@@ -125,6 +127,12 @@ public class SecurityConfig {
                     .requestMatchers("/actuator/health").permitAll()
                     // Estáticos ficam fora da cadeia — ver ignorarEstaticos().
                     .requestMatchers("/login").permitAll()
+                    // /error é o dispatch interno de erro do Spring Boot. Se ele
+                    // exigir login, qualquer 404/500 ANTES da autenticação (ex.:
+                    // favicon inexistente) vira a "página salva" do Spring
+                    // Security, e o usuário cai em /error?continue depois de
+                    // logar em vez de cair no dashboard.
+                    .requestMatchers("/error").permitAll()
                     .requestMatchers("/usuarios/**").hasRole("ADMIN")
                     .requestMatchers("/auditoria/**").hasRole("ADMIN")
                     .requestMatchers("/h2-console/**").hasRole("ADMIN")

@@ -4,8 +4,10 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
 import lombok.*;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -82,6 +84,29 @@ public class Compra {
     /** Número da Nota Fiscal — preenchido apenas na baixa. */
     @Column(length = 50)
     private String numeroNotaFiscal;
+
+    // ----- Documento de origem (Parte / Ofício) — lidos do PDF anexado ou digitados -----
+
+    /** Nº da Parte/Ofício que originou a compra. Ex.: "001/2026". */
+    @Column(name = "numero_documento", length = 30)
+    private String numeroDocumento;
+
+    /** Nº do processo no SGD (Sistema de Gestão de Documentos do TO). Ex.: "2026/09039/000362". */
+    @Column(name = "numero_sgd", length = 40)
+    private String numeroSgd;
+
+    /** Data que consta no documento ("Palmas - TO, 15 de Janeiro de 2026"). */
+    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+    @Column(name = "data_documento")
+    private LocalDate dataDocumento;
+
+    /** Campo "Assunto:" do documento. */
+    @Column(length = 255)
+    private String assunto;
+
+    /** Quem assina/solicita no documento (posto, nome e função). */
+    @Column(name = "solicitante_documento", length = 255)
+    private String solicitanteDocumento;
 
     @NotNull
     @Enumerated(EnumType.STRING)

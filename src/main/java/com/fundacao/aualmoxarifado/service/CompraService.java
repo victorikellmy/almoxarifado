@@ -1,6 +1,9 @@
 package com.fundacao.aualmoxarifado.service;
 
 import com.fundacao.aualmoxarifado.domain.*;
+import com.fundacao.aualmoxarifado.dto.CompraDetalheDTO;
+import com.fundacao.aualmoxarifado.dto.CompraResumoDTO;
+import com.fundacao.aualmoxarifado.exception.RecursoNaoEncontradoException;
 import com.fundacao.aualmoxarifado.repository.CompraRepository;
 import com.fundacao.aualmoxarifado.repository.MaterialRepository;
 import com.fundacao.aualmoxarifado.repository.SetorRepository;
@@ -65,6 +68,20 @@ public class CompraService {
     public Compra criarPreCompra(Compra compra,
                                  List<ItemCompra> itens,
                                  MultipartFile pdfSolicitacao) {
+        return criarPreCompra(compra, itens, pdfSolicitacao, null);
+    }
+
+    /**
+     * Variante usada pela tela "Nova pré-compra" com leitura automática da Parte:
+     * o PDF já foi enviado antes (para ser lido) e fica na sessão como
+     * {@link LeituraParteCompraService.ArquivoLido}; aqui ele vira o anexo SOLICITACAO
+     * quando nenhum novo arquivo foi escolhido no submit.
+     */
+    @Transactional
+    public Compra criarPreCompra(Compra compra,
+                                 List<ItemCompra> itens,
+                                 MultipartFile pdfSolicitacao,
+                                 LeituraParteCompraService.ArquivoLido pdfLido) {
 
         // RN08 — setor obrigatório quando a compra é DIRETA
         if (compra.getTipo() == TipoCompra.DIRETA
@@ -123,6 +140,9 @@ public class CompraService {
 
         if (pdfSolicitacao != null && !pdfSolicitacao.isEmpty()) {
             anexar(salva, pdfSolicitacao, TipoAnexoCompra.SOLICITACAO);
+        } else if (pdfLido != null) {
+            anexar(salva, pdfLido.conteudo(), pdfLido.nomeOriginal(), pdfLido.contentType(),
+                    TipoAnexoCompra.SOLICITACAO);
         }
 
         log.info("[Compras] Pré-compra #{} criada (tipo={}, itens={}, total estimado={}).",
@@ -275,20 +295,77 @@ public class CompraService {
         return anexo;
     }
 
+    /** Mesmo que {@link #anexar(Compra, MultipartFile, TipoAnexoCompra)}, para conteúdo já em memória. */
+    @Transactional
+    public AnexoCompra anexar(Compra compra, byte[] conteudo, String nomeArquivo, String contentType,
+                              TipoAnexoCompra tipo) {
+        var meta = anexoStorageService.salvar(conteudo, nomeArquivo, contentType, "compras/" + compra.getId());
+
+        AnexoCompra anexo = AnexoCompra.builder()
+                .tipo(tipo)
+                .nomeOriginal(meta.nomeOriginal())
+                .caminhoArmazenado(meta.caminhoRelativo())
+                .contentType(meta.contentType())
+                .tamanhoBytes(meta.tamanhoBytes())
+                .dataUpload(LocalDateTime.now())
+                .build();
+
+        compra.adicionarAnexo(anexo);
+        compraRepository.save(compra);
+        return anexo;
+    }
+
     // =====================================================================
     // LEITURAS
     // =====================================================================
 
     /** RF15 - usada pela tela "Aguardando Compra" (FIFO: dataSolicitacao asc). */
     public Page<Compra> listarAguardandoCompra(Pageable pageable) {
-        return compraRepository.findByStatus(StatusCompra.AGUARDANDO_COMPRA,
+        Page<Compra> page = compraRepository.findByStatus(StatusCompra.AGUARDANDO_COMPRA,
                 comOrdenacaoPadrao(pageable, Sort.by(Sort.Direction.ASC, "dataSolicitacao")));
+        carregarItens(page);
+        return page;
     }
 
     /** Lista geral (todas as compras, mais novas primeiro). */
     public Page<Compra> listarTodas(Pageable pageable) {
-        return compraRepository.findAll(
+        Page<Compra> page = compraRepository.findAll(
                 comOrdenacaoPadrao(pageable, Sort.by(Sort.Direction.DESC, "dataSolicitacao")));
+        carregarItens(page);
+        return page;
+    }
+
+    /**
+     * open-in-view=false: a lista.html mostra a contagem de itens por linha
+     * ({@code #lists.size(c.itens)}), e essa coleção lazy tem de estar
+     * inicializada antes de a transação fechar, senão a listagem quebra no
+     * render (era exatamente o que travava o módulo de compras em produção).
+     */
+    private void carregarItens(Page<Compra> page) {
+        if (!page.isEmpty()) {
+            compraRepository.carregarItens(page.getContent());
+        }
+    }
+
+    /**
+     * Listagem para a REST API ({@code GET /api/compras}): filtro opcional por
+     * status e DTO montado dentro da transação read-only (itens já hidratados).
+     */
+    public Page<CompraResumoDTO> listarResumo(StatusCompra status, Pageable pageable) {
+        Pageable p = comOrdenacaoPadrao(pageable, Sort.by(Sort.Direction.DESC, "dataSolicitacao"));
+        Page<Compra> page = status == null
+                ? compraRepository.findAll(p)
+                : compraRepository.findByStatus(status, p);
+        carregarItens(page);
+        return page.map(CompraResumoDTO::from);
+    }
+
+    /** Detalhe para a REST API ({@code GET /api/compras/{id}}) com itens e anexos. */
+    public CompraDetalheDTO buscarDetalhe(Long id) {
+        Compra compra = compraRepository.findByIdComItens(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Compra", id));
+        compraRepository.findByIdComAnexos(id);
+        return CompraDetalheDTO.from(compra);
     }
 
     /** Garante a ordenação padrão quando o chamador não pede nenhuma. */
@@ -300,8 +377,13 @@ public class CompraService {
     }
 
     public Compra buscarPorId(Long id) {
-        return compraRepository.findById(id)
+        Compra compra = compraRepository.findByIdComItens(id)
                 .orElseThrow(() -> new IllegalArgumentException("Compra id=" + id + " não encontrada."));
+        // Segunda query, mesma sessão: hidrata compra.anexos na mesma instância
+        // (ver o porquê no Javadoc de findByIdComAnexos). detalhes.html lê
+        // itens E anexos; ambos precisam estar prontos antes da sessão fechar.
+        compraRepository.findByIdComAnexos(id);
+        return compra;
     }
 
     /** Cancela uma pré-compra que ainda não recebeu baixa. */

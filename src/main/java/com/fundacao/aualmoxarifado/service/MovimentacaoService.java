@@ -3,6 +3,7 @@ package com.fundacao.aualmoxarifado.service;
 import com.fundacao.aualmoxarifado.config.CacheConfig;
 import com.fundacao.aualmoxarifado.domain.*;
 import com.fundacao.aualmoxarifado.dto.ConsumoSetorDTO;
+import com.fundacao.aualmoxarifado.dto.MovimentacaoDetalheDTO;
 import com.fundacao.aualmoxarifado.dto.MovimentacaoResumoDTO;
 import com.fundacao.aualmoxarifado.exception.RecursoNaoEncontradoException;
 import com.fundacao.aualmoxarifado.exception.RegraDeNegocioException;
@@ -51,6 +52,15 @@ public class MovimentacaoService {
     public Movimentacao buscar(Long id) {
         return movimentacaoRepository.findByIdComItens(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Movimentacao", id));
+    }
+
+    /**
+     * Detalhe para a REST API ({@code GET /api/movimentacoes/{id}}): o DTO é
+     * montado AQUI, dentro da transação read-only, sobre a movimentação já
+     * carregada com itens/materiais/setor.
+     */
+    public MovimentacaoDetalheDTO buscarDetalhe(Long id) {
+        return MovimentacaoDetalheDTO.from(buscar(id));
     }
 
     /** Histórico ordenado do mais recente para o mais antigo. */
@@ -258,26 +268,65 @@ public class MovimentacaoService {
     // Aprovação por gestor — RN04
     // =========================================================================
 
-    /**
-     * Quando o status muda para APROVADO/ENTREGUE pela primeira vez, o estoque
-     * de cada item é decrementado. Idempotente: só debita na primeira transição.
-     */
+    /** Atalho sem motivo — usado pela tela web (aprovar/entregar). */
     @Transactional
     @CacheEvict(cacheNames = {CacheConfig.CACHE_REL_MENSAL, CacheConfig.CACHE_REL_TRIMESTRAL,
             CacheConfig.CACHE_REL_ANUAL}, allEntries = true)
     public Movimentacao alterarStatus(Long movimentacaoId, StatusMovimentacao novoStatus) {
+        return alterarStatus(movimentacaoId, novoStatus, null);
+    }
+
+    /**
+     * Decisão do gestor sobre uma SAÍDA (RN04) — vale para a tela web e para o app.
+     *
+     * <p>Transições permitidas:</p>
+     * <table>
+     *   <tr><th>De</th><th>Para</th></tr>
+     *   <tr><td>PENDENTE_APROVACAO</td><td>APROVADO, ENTREGUE, REJEITADO</td></tr>
+     *   <tr><td>APROVADO</td><td>ENTREGUE, REJEITADO (devolve o estoque)</td></tr>
+     *   <tr><td>ENTREGUE, REJEITADO</td><td>nenhuma (terminais)</td></tr>
+     * </table>
+     *
+     * <p>Estoque: debitado na primeira passagem PENDENTE → APROVADO/ENTREGUE;
+     * devolvido em APROVADO → REJEITADO. Rejeição exige {@code motivo}
+     * (3–255 caracteres), gravado em {@code observacao} com o prefixo
+     * "Rejeitada: …" preservando o texto anterior.</p>
+     */
+    @Transactional
+    @CacheEvict(cacheNames = {CacheConfig.CACHE_REL_MENSAL, CacheConfig.CACHE_REL_TRIMESTRAL,
+            CacheConfig.CACHE_REL_ANUAL}, allEntries = true)
+    public Movimentacao alterarStatus(Long movimentacaoId, StatusMovimentacao novoStatus, String motivo) {
+        if (novoStatus == null) {
+            throw new IllegalArgumentException("Informe o novo status.");
+        }
         // Fetch join de itens + materiais: 1 query em vez de 1 + N proxies lazy.
         Movimentacao mov = movimentacaoRepository.findByIdComItens(movimentacaoId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Movimentacao", movimentacaoId));
 
+        if (mov.getTipo() != TipoMovimentacao.SAIDA) {
+            throw new RegraDeNegocioException("Movimentação #" + mov.getId() + " é uma "
+                    + mov.getTipo() + "; apenas saídas têm status alterável.");
+        }
+
         StatusMovimentacao atual = mov.getStatus();
         if (atual == novoStatus) return mov;
+        if (!transicaoPermitida(atual, novoStatus)) {
+            throw new RegraDeNegocioException(mensagemTransicaoInvalida(mov, novoStatus));
+        }
+
+        if (novoStatus == StatusMovimentacao.REJEITADO) {
+            String m = motivo == null ? "" : motivo.trim();
+            if (m.length() < 3 || m.length() > 255) {
+                throw new RegraDeNegocioException("Informe o motivo da rejeição (3 a 255 caracteres).");
+            }
+            mov.setObservacao(comporObservacaoRejeicao(mov.getObservacao(), m));
+        }
 
         boolean estavaPendente   = atual == StatusMovimentacao.PENDENTE_APROVACAO;
         boolean vaiBaixarEstoque = novoStatus == StatusMovimentacao.APROVADO
                                 || novoStatus == StatusMovimentacao.ENTREGUE;
 
-        if (estavaPendente && vaiBaixarEstoque && mov.getTipo() == TipoMovimentacao.SAIDA) {
+        if (estavaPendente && vaiBaixarEstoque) {
             for (MovimentacaoItem item : mov.getItens()) {
                 Material material = item.getMaterial();
                 if (material.getEstoqueAtual() < item.getQuantidade()) {
@@ -289,12 +338,49 @@ public class MovimentacaoService {
                 // Entidade gerenciada: dirty checking persiste no commit.
                 material.setEstoqueAtual(material.getEstoqueAtual() - item.getQuantidade());
             }
+        } else if (atual == StatusMovimentacao.APROVADO && novoStatus == StatusMovimentacao.REJEITADO) {
+            // A aprovação já tinha debitado o estoque: devolve as quantidades.
+            for (MovimentacaoItem item : mov.getItens()) {
+                Material material = item.getMaterial();
+                material.setEstoqueAtual(material.getEstoqueAtual() + item.getQuantidade());
+            }
         }
 
         mov.setStatus(novoStatus);
         Movimentacao salva = movimentacaoRepository.save(mov);
         auditoriaService.alterarStatus(salva);
         return salva;
+    }
+
+    /** Tabela de transições da RN04 (terminais: ENTREGUE e REJEITADO). */
+    public static boolean transicaoPermitida(StatusMovimentacao de, StatusMovimentacao para) {
+        if (de == null || para == null) return false;
+        return switch (de) {
+            case PENDENTE_APROVACAO -> para == StatusMovimentacao.APROVADO
+                                    || para == StatusMovimentacao.ENTREGUE
+                                    || para == StatusMovimentacao.REJEITADO;
+            case APROVADO -> para == StatusMovimentacao.ENTREGUE
+                          || para == StatusMovimentacao.REJEITADO;
+            case ENTREGUE, REJEITADO -> false;
+        };
+    }
+
+    private static String mensagemTransicaoInvalida(Movimentacao mov, StatusMovimentacao novo) {
+        return switch (mov.getStatus()) {
+            case ENTREGUE  -> "Saída #" + mov.getId() + " já foi entregue; não é possível alterar o status.";
+            case REJEITADO -> "Saída #" + mov.getId() + " já foi rejeitada; não é possível alterar o status.";
+            default        -> "Saída #" + mov.getId() + " está " + mov.getStatus()
+                              + "; transição para " + novo + " não é permitida.";
+        };
+    }
+
+    /** "Rejeitada: motivo | observação anterior" limitado ao tamanho da coluna (500). */
+    static String comporObservacaoRejeicao(String anterior, String motivo) {
+        String texto = "Rejeitada: " + motivo;
+        if (anterior != null && !anterior.isBlank()) {
+            texto += " | " + anterior.trim();
+        }
+        return texto.length() <= 500 ? texto : texto.substring(0, 497) + "...";
     }
 
     // =========================================================================
