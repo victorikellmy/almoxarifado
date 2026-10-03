@@ -23,8 +23,8 @@ import java.util.List;
  * </ul>
  *
  * Idempotente: só cria quem ainda não existe e nunca altera senha/perfil de usuário
- * existente. A senha inicial vem de {@code COMPRAS_SENHA_INICIAL}; sem ela (produção
- * sem a variável) o seeder apenas avisa e os usuários podem ser criados em /usuarios.
+ * existente. A senha inicial padrão é "Famsaudepm." (sobrescrevível por COMPRAS_SENHA_INICIAL);
+ * cada usuária troca a própria senha dentro do sistema em "Alterar senha".
  */
 @Slf4j
 @Component

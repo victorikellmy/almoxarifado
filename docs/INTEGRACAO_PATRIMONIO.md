@@ -144,7 +144,7 @@ CREATE INDEX idx_pendencia_status ON pendencia_patrimoniamento(status);
 | `PATRIMONIO_URL` | ex.: `https://patrimonio.fasaudefpto.com.br` (sem barra final). Sem ela a integração fica em fila. |
 | `PATRIMONIO_USUARIO` / `PATRIMONIO_SENHA` | credencial Basic do usuário de integração no Patrimônio |
 | `PATRIMONIO_REENVIO_MS` | intervalo do reenvio automático dos pendentes (default 600000 = 10 min) |
-| `COMPRAS_SENHA_INICIAL` | senha inicial dos usuários `delva.maria`, `sarah.luz`, `daisy.dias` (perfil COMPRAS) |
+| `COMPRAS_SENHA_INICIAL` | senha inicial dos usuários `delva.maria`, `sarah.luz`, `daisy.dias` (perfil COMPRAS). Padrão `Famsaudepm.`, trocada por elas em "Alterar senha" |
 
 Tela de acompanhamento: **Compras → detalhes** mostra o status do envio (Aguardando envio / Enviado /
 Falha), o nº da pendência no Patrimônio e um botão **Reenviar agora**.

@@ -68,7 +68,8 @@ curl -u USUARIO:SENHA -X POST -H "Content-Type: application/json" \
 ## Compras: perfis, decisão da Diretoria e Patrimônio
 
 - **Perfil `COMPRAS`** (Compras/Almoxarifado): `delva.maria` (chefe), `sarah.luz` e `daisy.dias` (auxiliares),
-  criados no primeiro boot com a senha de `COMPRAS_SENHA_INICIAL`. Só este perfil (e ADMIN) cadastra
+  criados no primeiro boot com a senha padrão `Famsaudepm.` (troca dentro do sistema em "Alterar senha";
+  outra senha inicial pode ser definida em `COMPRAS_SENHA_INICIAL`). Só este perfil (e ADMIN) cadastra
   pré-compras, registra a decisão da Diretoria, recebe/baixa e envia bens ao Patrimônio; `PADRAO` consulta.
 - **Decisão da Diretoria**: toda pré-compra nasce "Aguardando diretoria". Em *Compras → detalhes* o setor
   registra **Diretoria autorizou** ou **Não autorizou** (com parecer; cancela a pré-compra). A baixa só é
