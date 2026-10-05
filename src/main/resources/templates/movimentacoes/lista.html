@@ -46,7 +46,7 @@
                                 <option value="">Todos</option>
                                 <option th:each="s : ${setores}"
                                         th:value="${s.id}"
-                                        th:text="${s.nome}"
+                                        th:text="${s.nomeCompleto}"
                                         th:selected="${filtroSetorId != null and filtroSetorId == s.id}"></option>
                             </select>
                         </div>

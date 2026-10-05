@@ -102,7 +102,7 @@
                             </label>
                             <select name="setorSolicitanteId" id="setor" class="form-select" disabled>
                                 <option value="">— Selecione —</option>
-                                <option th:each="s : ${setores}" th:value="${s.id}" th:text="${s.nome}"
+                                <option th:each="s : ${setores}" th:value="${s.id}" th:text="${s.nomeCompleto}"
                                         th:selected="${(setorSugeridoId != null and setorSugeridoId == s.id)
                                                        or (compra.setorSolicitante != null and compra.setorSolicitante.id == s.id)}"></option>
                             </select>

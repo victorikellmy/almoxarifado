@@ -191,7 +191,7 @@ public class CompraController {
     public String telaBaixa(@PathVariable Long id, Model model) {
         Compra compra = compraService.buscarPorId(id);
         model.addAttribute("compra", compra);
-        model.addAttribute("setores", setorRepository.findAll());
+        model.addAttribute("setores", setorRepository.listarOrdenados());
         model.addAttribute("patrimonioConfigurado", patrimonioIntegracaoService.isConfigurado());
         return "compras/recebimento";
     }
@@ -226,7 +226,7 @@ public class CompraController {
         } catch (RuntimeException ex) {
             model.addAttribute("erro", ex.getMessage());
             model.addAttribute("compra", compraService.buscarPorId(id));
-            model.addAttribute("setores", setorRepository.findAll());
+            model.addAttribute("setores", setorRepository.listarOrdenados());
             model.addAttribute("patrimonioConfigurado", patrimonioIntegracaoService.isConfigurado());
             return "compras/recebimento";
         }
@@ -319,7 +319,7 @@ public class CompraController {
     private void prepararFormulario(Model model, Compra compra) {
         model.addAttribute("compra", compra);
         model.addAttribute("materiais", materialRepository.findAll());
-        model.addAttribute("setores", setorRepository.findAll());
+        model.addAttribute("setores", setorRepository.listarOrdenados());
         model.addAttribute("tipos", TipoCompra.values());
         model.addAttribute("iaHabilitada", extracaoIaService.isHabilitada());
     }

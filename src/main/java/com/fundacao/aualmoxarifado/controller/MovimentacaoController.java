@@ -53,7 +53,7 @@ public class MovimentacaoController {
         var page = movimentacaoService.listar(tipo, status, null, setorId, inicioDt, fimDt, pageable);
 
         model.addAttribute("page", page);
-        model.addAttribute("setores", setorRepository.findAll());
+        model.addAttribute("setores", setorRepository.listarOrdenados());
         // Devolve filtros selecionados para a UI manter o estado.
         model.addAttribute("filtroTipo", tipo);
         model.addAttribute("filtroStatus", status);
@@ -74,7 +74,7 @@ public class MovimentacaoController {
     @GetMapping("/saida/nova")
     public String novaSaida(Model model) {
         model.addAttribute("materiais", materialRepository.findAll());
-        model.addAttribute("setores", setorRepository.findAll());
+        model.addAttribute("setores", setorRepository.listarOrdenados());
         return "movimentacoes/saida-form";
     }
 
@@ -103,7 +103,7 @@ public class MovimentacaoController {
         } catch (RuntimeException ex) {
             model.addAttribute("erro", ex.getMessage());
             model.addAttribute("materiais", materialRepository.findAll());
-            model.addAttribute("setores", setorRepository.findAll());
+            model.addAttribute("setores", setorRepository.listarOrdenados());
             // devolve os valores digitados para o usuário não perder tudo
             model.addAttribute("setorIdSelecionado", setorId);
             model.addAttribute("retiradoPorInformado", retiradoPor);

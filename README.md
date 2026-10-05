@@ -65,6 +65,14 @@ curl -u USUARIO:SENHA -X POST -H "Content-Type: application/json" \
      https://almoxarifado.fasaudefpto.com.br/api/movimentacoes/12/status
 ```
 
+## Setores por organização (FPTO x FA-Saúde)
+
+Cada setor pertence a uma organização (`FPTO` ou `FA_SAUDE`); as duas podem ter setores homônimos
+(ex.: Financeiro), diferenciados pelo badge e pelo nome completo ("Financeiro — FA-Saúde") nas listas,
+selects e na API (`/api/setores` passou a devolver `organizacao` e `nomeCompleto`). Os setores são
+cadastrados sem pessoas (responsável opcional). A migration V5 carrega os 13 setores da FPTO e os 9 do
+FA-Saúde, espelhando os grupos de rede do servidor de arquivos.
+
 ## Compras: perfis, decisão da Diretoria e Patrimônio
 
 - **Perfil `COMPRAS`** (Compras/Almoxarifado): `delva.maria` (chefe), `sarah.luz` e `daisy.dias` (auxiliares),

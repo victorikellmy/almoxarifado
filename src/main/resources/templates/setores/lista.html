@@ -5,7 +5,7 @@
 <div class="app-shell">
     <aside th:replace="~{fragments/layout :: sidebar('setores')}"></aside>
     <main class="app-main">
-        <header th:replace="~{fragments/layout :: topbar('Setores', 'Centros de custo / departamentos (RF04)')}"></header>
+        <header th:replace="~{fragments/layout :: topbar('Setores', 'Centros de custo / departamentos da FPTO e do FA-Saúde (RF04)')}"></header>
 
         <div class="app-content">
 
@@ -13,25 +13,41 @@
                 <div class="card-pad">
                     <h5 class="mb-3"><i class="bi bi-plus-circle me-1"></i> Novo setor</h5>
                     <form th:action="@{/setores}" th:object="${setor}" method="post">
+                        <div class="alert alert-danger py-2" th:if="${#fields.hasErrors('*')}">
+                            <ul class="mb-0 ps-3">
+                                <li th:each="e : ${#fields.errors('*')}" th:text="${e}"></li>
+                            </ul>
+                        </div>
                         <div class="row g-2">
-                            <div class="col-md-4">
-                                <label class="form-label">Nome do setor</label>
-                                <input type="text" class="form-control" th:field="*{nome}" required>
+                            <div class="col-md-2">
+                                <label class="form-label">Organização *</label>
+                                <select class="form-select" th:field="*{organizacao}" required>
+                                    <option th:each="o : ${organizacoes}" th:value="${o}" th:text="${o.rotulo}"></option>
+                                </select>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Responsável</label>
-                                <input type="text" class="form-control" th:field="*{responsavel}" required>
+                                <label class="form-label">Nome do setor *</label>
+                                <input type="text" class="form-control" th:field="*{nome}" required maxlength="120"
+                                       placeholder="Ex.: Financeiro, Compras e Almoxarifado">
                             </div>
                             <div class="col-md-3">
+                                <label class="form-label">Responsável <small class="text-muted">(opcional)</small></label>
+                                <input type="text" class="form-control" th:field="*{responsavel}" maxlength="120">
+                            </div>
+                            <div class="col-md-2">
                                 <label class="form-label">Centro de custo</label>
-                                <input type="text" class="form-control" placeholder="Opcional"
+                                <input type="text" class="form-control" placeholder="Opcional" maxlength="30"
                                        th:field="*{codigoCentroCusto}">
                             </div>
                             <div class="col-md-1 d-flex align-items-end">
-                                <button class="btn btn-primary w-100">
+                                <button class="btn btn-primary w-100" title="Salvar setor">
                                     <i class="bi bi-check-lg"></i>
                                 </button>
                             </div>
+                        </div>
+                        <div class="form-text mt-2">
+                            Os setores são cadastrados sem pessoas (o acesso é controlado pelos grupos da rede).
+                            FPTO e FA-Saúde podem ter setores com o mesmo nome; a organização é o que os diferencia.
                         </div>
                     </form>
                 </div>
@@ -49,6 +65,7 @@
                         <thead>
                         <tr>
                             <th>#</th>
+                            <th>Organização</th>
                             <th>Nome</th>
                             <th>Responsável</th>
                             <th>Centro de custo</th>
@@ -57,8 +74,13 @@
                         <tbody>
                         <tr th:each="s : ${setores}">
                             <td class="text-muted" th:text="${s.id}"></td>
+                            <td>
+                                <span class="badge"
+                                      th:classappend="${s.organizacao != null and s.organizacao.name() == 'FA_SAUDE'} ? 'bg-info text-dark' : 'bg-primary'"
+                                      th:text="${s.organizacao != null ? s.organizacao.sigla : 'FPTO'}"></span>
+                            </td>
                             <td class="fw-semibold" th:text="${s.nome}"></td>
-                            <td th:text="${s.responsavel}"></td>
+                            <td th:text="${s.responsavel} ?: '—'"></td>
                             <td>
                                 <span th:if="${s.codigoCentroCusto}" class="badge bg-secondary"
                                       th:text="${s.codigoCentroCusto}"></span>
@@ -66,7 +88,7 @@
                             </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(setores)}">
-                            <td colspan="4" class="empty-state">
+                            <td colspan="5" class="empty-state">
                                 <i class="bi bi-inbox d-block mb-2"></i>
                                 Nenhum setor cadastrado.
                             </td>

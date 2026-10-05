@@ -23,7 +23,7 @@ public class SetorApiController {
 
     @GetMapping
     public List<SetorApiDTO> listar() {
-        return setorRepository.findAll().stream()
+        return setorRepository.listarOrdenados().stream()
                 .map(SetorApiDTO::from)
                 .toList();
     }

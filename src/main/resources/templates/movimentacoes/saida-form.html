@@ -30,7 +30,7 @@
                                 <option th:each="s : ${setores}"
                                         th:value="${s.id}"
                                         th:selected="${setorIdSelecionado != null and setorIdSelecionado == s.id}"
-                                        th:text="${s.nome + (s.codigoCentroCusto != null ? ' [' + s.codigoCentroCusto + ']' : '')}"></option>
+                                        th:text="${s.nomeCompleto + (s.codigoCentroCusto != null ? ' [' + s.codigoCentroCusto + ']' : '')}"></option>
                             </select>
                             <div class="form-text">Obrigatório (RN03).</div>
                         </div>
