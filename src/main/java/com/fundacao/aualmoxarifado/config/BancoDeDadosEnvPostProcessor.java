@@ -26,7 +26,7 @@ import java.util.Set;
  *    boot FALHA com uma mensagem listando exatamente o que está ausente.
  *    Uma aplicação que sobe apontando para lugar nenhum esconde erro de
  *    configuração — preferimos o erro imediato e legível.
- *  - Os perfis "dev" e "test" são ignorados aqui: eles usam H2 em memória
+ *  - Os perfis "dev", "test" e "homolog" são ignorados aqui: eles usam H2 em memória
  *    declarado nos respectivos application-{profile}.properties e nunca
  *    tocam em banco externo.
  *
@@ -36,7 +36,7 @@ import java.util.Set;
  */
 public class BancoDeDadosEnvPostProcessor implements EnvironmentPostProcessor, Ordered {
 
-    private static final Set<String> PERFIS_SEM_BANCO_EXTERNO = Set.of("dev", "test");
+    private static final Set<String> PERFIS_SEM_BANCO_EXTERNO = Set.of("dev", "test", "homolog");
 
     @Override
     public int getOrder() {

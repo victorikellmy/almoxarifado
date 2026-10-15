@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -33,13 +34,15 @@ import java.util.Map;
  * SKU (RF18) é gerado automaticamente pelo {@code MaterialService.salvar} —
  * nunca passamos o código manualmente aqui.
  *
- * Como desativar: este componente está marcado com {@code @Profile("dev")}.
+ * Roda nos perfis "dev" e "homolog" (neste, complementado pelo
+ * {@link HomologacaoSeeder}). Como desativar: perfil diferente desses.
  * Para desligar, troque o perfil ativo em application.properties para algo
  * diferente de "dev" ou comente {@code @Component}.
  */
 @Slf4j
 @Component
-@Profile("dev")
+@Profile({"dev", "homolog"})
+@Order(5)   // depois dos usuários; antes do HomologacaoSeeder
 @RequiredArgsConstructor
 public class DataSeeder implements CommandLineRunner {
 
