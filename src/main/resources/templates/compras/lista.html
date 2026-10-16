@@ -86,14 +86,7 @@
                                 <span th:unless="${c.numeroNotaFiscal}" class="text-muted">—</span>
                             </td>
                             <td>
-                                <span class="status-pill"
-                                      th:classappend="${c.status.name() == 'AGUARDANDO_COMPRA'} ? 'text-warning'
-                                                    : (${c.status.name() == 'COMPRA_REALIZADA'} ? 'text-success'
-                                                    : 'text-danger')"
-                                      th:style="${c.status.name() == 'AGUARDANDO_COMPRA'} ? 'background:#fef3c7;'
-                                              : (${c.status.name() == 'COMPRA_REALIZADA'} ? 'background:#d1fae5;'
-                                              : 'background:#fee2e2;')"
-                                      th:text="${c.status}"></span>
+                                <span th:replace="~{fragments/status :: pill(${c.status.name()})}"></span>
                             </td>
                             <td class="text-end">
                                 <a class="btn btn-sm btn-outline-secondary" th:href="@{|/compras/${c.id}|}">

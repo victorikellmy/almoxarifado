@@ -52,8 +52,8 @@
                                       th:text="${u.perfil.rotulo}"></span>
                             </td>
                             <td>
-                                <span th:if="${u.ativo}" class="status-pill text-success" style="background:#d1fae5;">Ativo</span>
-                                <span th:unless="${u.ativo}" class="status-pill text-danger" style="background:#fee2e2;">Desativado</span>
+                                <span th:if="${u.ativo}" class="status-pill status-ativo">Ativo</span>
+                                <span th:unless="${u.ativo}" class="status-pill status-inativo">Desativado</span>
                             </td>
                             <td class="text-muted"
                                 th:text="${#temporals.format(u.criadoEm, 'dd/MM/yyyy HH:mm')}"></td>

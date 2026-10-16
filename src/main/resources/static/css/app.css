@@ -1,7 +1,7 @@
 /* =============================================================
-   Claude Design — Sistema de design do Gerenciador Patrimonial
-   Paleta: lilás neutro (#6b5691) — diferencia o Almoxarifado dos
-   sistemas irmãos (Patrimônio azul, e o sistema verde)
+   FPTO Design System — Almoxarifado/Compras (tokens do Gerenciador Patrimonial)
+   Paleta: azul institucional FPTO (primary-600 #175a8a) — um azul só; verde, amarelo,
+   vermelho e ciano são cores de estado. Fonte: TI-docs/Sistemas/Padronizaçao/GUIA-DE-DESIGN.md
    Suporte: Bootstrap 5.3 + Thymeleaf SSR + dark mode
    ============================================================= */
 
@@ -9,17 +9,17 @@
    1. TOKENS — Light mode (default)
    ============================================================ */
 :root {
-    /* Paleta primária — lilás neutro */
-    --primary-50:  #f5f3f9;
-    --primary-100: #eae6f3;
-    --primary-200: #d5cce7;
-    --primary-300: #b9aad4;
-    --primary-400: #9a85bf;
-    --primary-500: #8069a9;
-    --primary-600: #6b5691;
-    --primary-700: #554374;
-    --primary-800: #3e3156;
-    --primary-900: #2a2139;
+    /* Paleta primária — azul corporativo */
+    --primary-50:  #eaf3fa;
+    --primary-100: #d4e6f2;
+    --primary-200: #a9cde5;
+    --primary-300: #7eb4d7;
+    --primary-400: #4593c9;
+    --primary-500: #2776ad;
+    --primary-600: #175a8a;
+    --primary-700: #0f4269;
+    --primary-800: #0a2e4a;
+    --primary-900: #071c2e;
 
     /* Neutros — escala slate */
     --slate-50:  #f8fafc;
@@ -47,23 +47,21 @@
     --info-bg:      #e0f2fe;
     --info-fg:      #075985;
 
-    /* Superfícies — modo claro "quente": bege mesclado com o lilás primário.
-       Fundo levemente bege (menos brilho que o branco/slate puro), cartões em
-       branco-creme e cinzas com um toque de lilás para a leitura cansar menos. */
-    --bg-page:    #f4f0ec;
-    --bg-surface: #fffdfa;
-    --bg-muted:   #f1ebea;
-    --bg-hover:   #f0e9ee;
+    /* Superfícies */
+    --bg-page:    var(--slate-50);
+    --bg-surface: #ffffff;
+    --bg-muted:   var(--slate-100);
+    --bg-hover:   var(--slate-100);
 
-    /* Bordas — tom neutro-quente puxado para o lilás */
-    --border:       #e5dddf;
-    --border-hover: #cfc2d2;
+    /* Bordas */
+    --border:       var(--slate-200);
+    --border-hover: var(--slate-300);
     --border-focus: var(--primary-500);
 
-    /* Texto — grafite com base lilás (primary-900) em vez do azul-marinho slate */
-    --text-primary:   #2b2435;
-    --text-secondary: #5a4f66;
-    --text-muted:     #7b7085;
+    /* Texto */
+    --text-primary:   var(--slate-900);
+    --text-secondary: var(--slate-600);
+    --text-muted:     var(--slate-500);
     --text-inverse:   #ffffff;
 
     /* Espaçamentos */
@@ -88,7 +86,7 @@
     --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
     --shadow-2: 0 4px 6px -1px rgba(15, 23, 42, 0.08), 0 2px 4px -2px rgba(15, 23, 42, 0.06);
     --shadow-3: 0 10px 15px -3px rgba(15, 23, 42, 0.10), 0 4px 6px -4px rgba(15, 23, 42, 0.08);
-    --shadow-focus: 0 0 0 3px rgba(107, 86, 145, 0.18);
+    --shadow-focus: 0 0 0 3px rgba(23, 90, 138, 0.18);
 
     /* Tipografia */
     --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -139,7 +137,7 @@
     --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
     --shadow-2: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
     --shadow-3: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
-    --shadow-focus: 0 0 0 3px rgba(154, 133, 191, 0.3);
+    --shadow-focus: 0 0 0 3px rgba(69, 147, 201, 0.3);
 }
 
 /* ============================================================
@@ -267,7 +265,7 @@ body:has(.app-sidebar) .navbar { margin-bottom: 0 !important; }
     justify-content: center;
     font-size: 1.05rem;
     flex-shrink: 0;
-    box-shadow: 0 4px 10px rgba(107, 86, 145, 0.25);
+    box-shadow: 0 4px 10px rgba(23, 90, 138, 0.25);
 }
 
 .sidebar-brand-text {
@@ -374,7 +372,7 @@ body:has(.app-sidebar) .navbar { margin-bottom: 0 !important; }
     background: rgba(255,255,255,0.04);
 }
 [data-theme="dark"] .sidebar-link.active {
-    background: rgba(154, 133, 191, 0.15);
+    background: rgba(69, 147, 201, 0.15);
     color: var(--primary-300);
 }
 [data-theme="dark"] .sidebar-link.active i { color: var(--primary-300); }
@@ -677,7 +675,7 @@ a.sidebar-user-role:hover { color: var(--text-primary); text-decoration: underli
     flex-shrink: 0;
 }
 [data-theme="dark"] .form-section-icon {
-    background: rgba(154, 133, 191, 0.15);
+    background: rgba(69, 147, 201, 0.15);
     color: var(--primary-300);
 }
 .form-section-title {
@@ -956,7 +954,7 @@ a.sidebar-user-role:hover { color: var(--text-primary); text-decoration: underli
     color: var(--primary-700);
 }
 [data-theme="dark"] .badge-conservacao {
-    background: rgba(154, 133, 191, 0.15);
+    background: rgba(69, 147, 201, 0.15);
     color: var(--primary-300);
 }
 
@@ -1107,9 +1105,9 @@ a.sidebar-user-role:hover { color: var(--text-primary); text-decoration: underli
 }
 .filter-chip a:hover { opacity: 1; }
 [data-theme="dark"] .filter-chip {
-    background: rgba(154, 133, 191, 0.15);
+    background: rgba(69, 147, 201, 0.15);
     color: var(--primary-300);
-    border-color: rgba(154, 133, 191, 0.25);
+    border-color: rgba(69, 147, 201, 0.25);
 }
 
 /* ============================================================
@@ -1535,7 +1533,7 @@ a.sidebar-user-role:hover { color: var(--text-primary); text-decoration: underli
 .kpi-icon-danger  { background: var(--danger-bg);   color: var(--danger-fg); }
 
 [data-theme="dark"] .kpi-icon-primary {
-    background: rgba(154, 133, 191, 0.15);
+    background: rgba(69, 147, 201, 0.15);
     color: var(--primary-300);
 }
 
@@ -1672,7 +1670,7 @@ a > .stat-card:hover { transform: translateY(-1px); }
 .stat-icon.bg-info-soft    { background: var(--info-bg);     color: var(--info-fg); }
 .stat-icon.bg-success-soft { background: var(--success-bg);  color: var(--success-fg); }
 [data-theme="dark"] .stat-icon.bg-brand {
-    background: rgba(128, 105, 169, 0.18);
+    background: rgba(69, 147, 201, 0.15);
     color: var(--primary-300);
 }
 
@@ -1682,7 +1680,7 @@ a > .stat-card:hover { transform: translateY(-1px); }
     font-weight: 500;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: .03em;
+    letter-spacing: .06em;
     line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
@@ -1769,7 +1767,7 @@ a > .stat-card:hover { transform: translateY(-1px); }
     color: #cbd5e1 !important;       /* mais legível que slate-400 */
 }
 [data-theme="dark"] code {
-    color: #c4b5fd;                  /* lavanda clara — acompanha a paleta lilás */
+    color: var(--primary-300);       /* azul claro — acompanha a paleta institucional */
     background: rgba(148,163,184,.10);
     padding: 2px 6px;
     border-radius: 4px;
@@ -1823,105 +1821,62 @@ a > .stat-card:hover { transform: translateY(-1px); }
     font-weight: 600;
     letter-spacing: .03em;
 }
-/* Tema claro — mesmos pares bg/texto usados antes via inline-style + .text-* */
+/* Pares de estado do design system (fundo -bg / texto -fg). No tema escuro os
+   tokens já viram transparências de 15% com texto mais claro: nada a sobrescrever.
+   Pendente/aguardando → warning · aprovado/em andamento → info ·
+   entregue/realizada/ok → success · rejeitado/cancelada/erro → danger ·
+   inativo/concluído → slate-200 + slate-700. */
 .status-pill.status-pendente_aprovacao,
-.status-pill.status-aguardando_compra { background: #fef3c7; color: #ffc107; }
-.status-pill.status-aprovado          { background: #e0f2fe; color: #0dcaf0; }
+.status-pill.status-aguardando_compra,
+.status-pill.status-pendente          { background: var(--warning-bg); color: var(--warning-fg); }
+.status-pill.status-aprovado          { background: var(--info-bg);    color: var(--info-fg); }
 .status-pill.status-entregue,
 .status-pill.status-compra_realizada,
 .status-pill.status-ativo,
-.status-pill.status-ok                { background: #d1fae5; color: #198754; }
+.status-pill.status-ok,
+.status-pill.status-autorizada,
+.status-pill.status-enviado           { background: var(--success-bg); color: var(--success-fg); }
 .status-pill.status-rejeitado,
 .status-pill.status-cancelada,
-.status-pill.status-repor             { background: #fee2e2; color: #dc3545; }
-.status-pill.status-inativo           { background: #e5e7eb; color: #6c757d; }
-
-/* Tema escuro — backgrounds suaves com texto mais claro (WCAG-friendly). */
-[data-theme="dark"] .status-pill {
-    border: 1px solid transparent;
-}
-[data-theme="dark"] .status-pill.status-pendente_aprovacao,
-[data-theme="dark"] .status-pill.status-aguardando_compra {
-    background: rgba(245, 158, 11, 0.18);
-    color: #fcd34d;
-    border-color: rgba(245, 158, 11, 0.35);
-}
-[data-theme="dark"] .status-pill.status-aprovado {
-    background: rgba(14, 165, 233, 0.18);
-    color: #7dd3fc;
-    border-color: rgba(14, 165, 233, 0.35);
-}
-[data-theme="dark"] .status-pill.status-entregue,
-[data-theme="dark"] .status-pill.status-compra_realizada,
-[data-theme="dark"] .status-pill.status-ativo,
-[data-theme="dark"] .status-pill.status-ok {
-    background: rgba(16, 185, 129, 0.18);
-    color: #6ee7b7;
-    border-color: rgba(16, 185, 129, 0.35);
-}
-[data-theme="dark"] .status-pill.status-rejeitado,
-[data-theme="dark"] .status-pill.status-cancelada,
-[data-theme="dark"] .status-pill.status-repor {
-    background: rgba(239, 68, 68, 0.18);
-    color: #fca5a5;
-    border-color: rgba(239, 68, 68, 0.35);
-}
-
-/* Legado: compras/lista.html ainda usa .status-pill.text-* com estilo
-   inline — os overrides com !important abaixo garantem o contraste no
-   escuro até aquele template migrar para o fragment. */
-[data-theme="dark"] .status-pill.text-warning {
-    background: rgba(245, 158, 11, 0.18) !important;
-    color: #fcd34d !important;
-    border-color: rgba(245, 158, 11, 0.35);
-}
-[data-theme="dark"] .status-pill.text-info {
-    background: rgba(14, 165, 233, 0.18) !important;
-    color: #7dd3fc !important;
-    border-color: rgba(14, 165, 233, 0.35);
-}
-[data-theme="dark"] .status-pill.text-success {
-    background: rgba(16, 185, 129, 0.18) !important;
-    color: #6ee7b7 !important;
-    border-color: rgba(16, 185, 129, 0.35);
-}
-[data-theme="dark"] .status-pill.text-danger {
-    background: rgba(239, 68, 68, 0.18) !important;
-    color: #fca5a5 !important;
-    border-color: rgba(239, 68, 68, 0.35);
-}
+.status-pill.status-repor,
+.status-pill.status-nao_autorizada,
+.status-pill.status-erro              { background: var(--danger-bg);  color: var(--danger-fg); }
+.status-pill.status-inativo           { background: var(--slate-200);  color: var(--slate-700); }
+[data-theme="dark"] .status-pill.status-inativo { background: rgba(148, 163, 184, 0.18); color: var(--slate-300); }
 
 /* =============================================================
-   Página de login (standalone — sem shell/tema)
-   Movido de templates/auth/login.html
+   Página de login (fora do shell) — design system FPTO: fundo bg-page,
+   cartão radius-xl com borda + shadow-3, logo institucional a 56px
+   (colorido no claro, branco no escuro).
    ============================================================= */
 .login-page {
     min-height: 100vh;
     display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(135deg, #6b5691 0%, #3e3156 100%);
-    padding: 1rem;
+    background: var(--bg-page);
+    padding: var(--space-4);
 }
-.login-page .login-card { max-width: 420px; width: 100%; border:0; border-radius:1rem; }
-.login-page .brand { text-align:center; color:#fff; margin-bottom:1.5rem; }
-.login-page .brand-icon {
-    display:inline-flex; align-items:center; justify-content:center;
-    width:80px; height:80px; border-radius:50%;
-    background:rgba(255,255,255,.15); margin-bottom:.75rem;
+.login-card {
+    width: 100%; max-width: 400px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-3);
+    padding: var(--space-7) var(--space-6);
 }
-.login-page .brand-icon i { font-size:2.5rem; color:#fff; }
+.login-logo { display: flex; justify-content: center; margin-bottom: var(--space-5); }
+.login-logo img { height: 56px; width: auto; }
+.login-logo .login-logo-dark { display: none; }
+[data-theme="dark"] .login-logo .login-logo-light { display: none; }
+[data-theme="dark"] .login-logo .login-logo-dark { display: inline-block; }
+.login-title { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; margin: 0; color: var(--text-primary); }
+.login-subtitle { font-size: 0.8125rem; color: var(--text-secondary); margin: 2px 0 0; }
+.login-foot { font-size: 0.75rem; color: var(--text-muted); margin: var(--space-6) 0 0; text-align: center; }
 
 /* ============================================================
    Alinhamento e ritmo visual — cards, títulos de seção e
    pares rótulo/valor (dl.row) usados em Compras, Movimentações
    e Dashboard. Vale para os dois temas (usa só tokens).
    ============================================================ */
-
-/* Sombras do modo claro acompanham o lilás (menos "preto" sobre bege) */
-:root:not([data-theme="dark"]) {
-    --shadow-1: 0 1px 2px rgba(62, 49, 86, 0.05), 0 1px 3px rgba(62, 49, 86, 0.06);
-    --shadow-2: 0 4px 6px -1px rgba(62, 49, 86, 0.09), 0 2px 4px -2px rgba(62, 49, 86, 0.06);
-    --shadow-3: 0 10px 15px -3px rgba(62, 49, 86, 0.11), 0 4px 6px -4px rgba(62, 49, 86, 0.08);
-}
 
 /* Título da página (h2) com o mesmo peso/tamanho do .page-title e badge centralizado */
 .page-header h2 {
@@ -2007,18 +1962,8 @@ a > .stat-card:hover { transform: translateY(-1px); }
 /* Linhas vazias e placeholders com cor própria no claro */
 .empty-state { color: var(--text-muted); padding: 2.5rem 1rem; text-align: center; }
 
-/* ===== Compras: decisão da Diretoria e tipo patrimonial ===== */
-.status-pill.status-autorizada     { background: #d1fae5; color: #198754; }
-.status-pill.status-nao_autorizada { background: #fee2e2; color: #dc3545; }
-.status-pill.status-pendente       { background: #fef3c7; color: #b45309; }
-.status-pill.status-enviado        { background: #d1fae5; color: #198754; }
-.status-pill.status-erro           { background: #fee2e2; color: #dc3545; }
-[data-theme="dark"] .status-pill.status-autorizada,
-[data-theme="dark"] .status-pill.status-enviado        { background: rgba(16,185,129,.18); color: #6ee7b7; }
-[data-theme="dark"] .status-pill.status-nao_autorizada,
-[data-theme="dark"] .status-pill.status-erro           { background: rgba(239,68,68,.18);  color: #fca5a5; }
-[data-theme="dark"] .status-pill.status-pendente       { background: rgba(245,158,11,.18); color: #fcd34d; }
-.badge.badge-patrimonial { background: var(--primary-600); color: #fff; }
+/* ===== Compras: tipo patrimonial (as pills da Diretoria/Patrimônio estão nos pares acima) ===== */
+.badge.badge-patrimonial { background: var(--primary-600); color: var(--text-inverse); }
 
 /* ===== Compras: itens — seletor de material com busca e grupo/subgrupo ===== */
 .tabela-itens-compra th.col-item   { width: 38%; }
@@ -2039,7 +1984,7 @@ a > .stat-card:hover { transform: translateY(-1px); }
     max-height: 320px; overflow-y: auto;
     background: var(--bg-surface); border: 1px solid var(--border);
     border-radius: var(--radius-md, 10px);
-    box-shadow: 0 12px 32px rgba(42, 33, 57, .16);
+    box-shadow: var(--shadow-3);
 }
 .picker-opcao {
     padding: .5rem .75rem; cursor: pointer;
@@ -2054,4 +1999,3 @@ a > .stat-card:hover { transform: translateY(-1px); }
 }
 .picker-vazio { padding: .75rem; font-size: .85rem; color: var(--text-muted); }
 .picker-selecionado { margin-top: .25rem; }
-[data-theme="dark"] .picker-lista { box-shadow: 0 12px 32px rgba(0, 0, 0, .5); }

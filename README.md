@@ -73,6 +73,15 @@ selects e na API (`/api/setores` passou a devolver `organizacao` e `nomeCompleto
 cadastrados sem pessoas (responsável opcional). A migration V5 carrega os 13 setores da FPTO e os 9 do
 FA-Saúde, espelhando os grupos de rede do servidor de arquivos.
 
+## Visual: FPTO Design System
+
+A interface segue o design system dos sistemas internos da FPTO (`TI-docs/Sistemas/Padronizaçao/`,
+`GUIA-DE-DESIGN.md` + `FPTO-design-system.zip`): tokens e componentes em `static/css/app.css`
+(as seções 1–25 são as mesmas do Gerenciador Patrimonial; o que é só do Almoxarifado fica no fim do
+arquivo), um azul institucional (`primary-600`), cores de estado só para estado (pares `-bg`/`-fg`,
+usados pelo fragment `fragments/status :: pill`), tema claro/escuro por `data-theme` e logo oficial
+na sidebar e no login. Ao criar telas, use só tokens (`var(--...)`), nunca cores soltas.
+
 ## Compras: perfis, decisão da Diretoria e Patrimônio
 
 - **Perfil `COMPRAS`** (Compras/Almoxarifado): `delva.maria` (chefe), `sarah.luz` e `daisy.dias` (auxiliares),

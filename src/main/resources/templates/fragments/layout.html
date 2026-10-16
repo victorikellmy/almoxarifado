@@ -34,7 +34,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"
           rel="stylesheet"/>
 
-    <!-- CSS custom (Claude Design — compartilhado com o Patrimônio) -->
+    <!-- FPTO Design System — tokens/componentes compartilhados com o Gerenciador Patrimonial -->
     <link rel="stylesheet" th:href="@{/css/app.css}"/>
 
     <!-- Aplica o tema antes do render para evitar flash -->
@@ -115,7 +115,7 @@
         </div>
 
         <div class="sidebar-section">
-            <div class="sidebar-section-title">Operações</div>
+            <div class="sidebar-section-title">Operacional</div>
             <a class="sidebar-link" th:classappend="${ativo == 'compras'} ? 'active'" th:href="@{/compras}">
                 <i class="bi bi-cart3"></i>
                 <span class="sidebar-link-label">Compras</span>
@@ -141,7 +141,7 @@
         </div>
 
         <div class="sidebar-section">
-            <div class="sidebar-section-title">Relatórios</div>
+            <div class="sidebar-section-title">Análises</div>
             <a class="sidebar-link" th:classappend="${ativo == 'rel-consumo'} ? 'active'"
                th:href="@{/movimentacoes/relatorio/consumo-setor}">
                 <i class="bi bi-bar-chart"></i>

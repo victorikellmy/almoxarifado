@@ -19,21 +19,21 @@
                     <div class="row g-3 mb-3">
                         <div class="col-md-6">
                             <label class="form-label">Área</label>
-                            <input type="text" class="form-control" style="background:#f8fafc;"
+                            <input type="text" class="form-control" style="background:var(--bg-muted);"
                                    th:value="${subcategoria.area.sigla + ' — ' + subcategoria.area.nome}"
                                    readonly>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Sigla</label>
                             <input type="text" class="form-control text-uppercase fw-bold"
-                                   style="background:#f8fafc;"
+                                   style="background:var(--bg-muted);"
                                    th:value="${subcategoria.sigla}" readonly>
                             <div class="form-text">Compõe o SKU dos materiais.</div>
                         </div>
                         <div class="col-md-3">
                             <label class="form-label">Próximo sequencial</label>
                             <input type="text" class="form-control"
-                                   style="background:#f8fafc;"
+                                   style="background:var(--bg-muted);"
                                    th:value="${subcategoria.proximoSequencial}" readonly>
                         </div>
                     </div>

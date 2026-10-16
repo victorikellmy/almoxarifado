@@ -196,7 +196,7 @@
                             </thead>
                             <tbody>
                             <tr th:each="l : ${resultado.linhas}"
-                                th:style="${l.falhou} ? 'background:#fef2f2;'">
+                                th:style="${l.falhou} ? 'background:var(--danger-bg);'">
                                 <td class="text-muted" th:text="${l.numeroLinha}"></td>
                                 <td class="fw-semibold" th:text="${l.nome}"></td>
                                 <td><code th:if="${l.sku}" th:text="${l.sku}"></code></td>
