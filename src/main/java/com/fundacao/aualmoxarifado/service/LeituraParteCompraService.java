@@ -3,6 +3,7 @@ package com.fundacao.aualmoxarifado.service;
 import com.fundacao.aualmoxarifado.domain.Compra;
 import com.fundacao.aualmoxarifado.domain.Material;
 import com.fundacao.aualmoxarifado.domain.Setor;
+import com.fundacao.aualmoxarifado.domain.Subcategoria;
 import com.fundacao.aualmoxarifado.domain.TipoCompra;
 import com.fundacao.aualmoxarifado.dto.ExtracaoDocumentoCompra;
 import com.fundacao.aualmoxarifado.dto.ExtracaoDocumentoCompra.Natureza;
@@ -13,6 +14,8 @@ import com.fundacao.aualmoxarifado.service.extracao.ParteCompraParser;
 import com.fundacao.aualmoxarifado.service.extracao.PdfTextoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -54,7 +57,8 @@ public class LeituraParteCompraService {
 
     /** Linha de item sugerida para o formulário (material casado ou não). */
     public record ItemSugerido(String descricao, Integer quantidade, String unidade,
-                               BigDecimal valorUnitario, Long materialId, String materialNome) {
+                               BigDecimal valorUnitario, Long materialId, String materialNome,
+                               Long areaId, Long subcategoriaId) {
         public boolean isCasado() { return materialId != null; }
     }
 
@@ -120,7 +124,7 @@ public class LeituraParteCompraService {
                     + ": selecione o setor.");
         }
 
-        List<ItemSugerido> itens = casarItens(ex, avisos);
+        List<ItemSugerido> itens = casarItens(ex, avisos, compra.getTipo() == TipoCompra.ESTOQUE);
 
         return new Preenchimento(leituraId, arquivo, ex, compra, setorId, itens, avisos);
     }
@@ -179,18 +183,29 @@ public class LeituraParteCompraService {
     }
 
     /** Casa cada item lido com um Material do catálogo por semelhança de nome. */
-    private List<ItemSugerido> casarItens(ExtracaoDocumentoCompra ex, List<String> avisos) {
+    /**
+     * Casa cada item do documento com o catálogo. Em compra de ESTOQUE o material
+     * é obrigatório, então item não encontrado vira aviso; em DIRETA o item fica
+     * com a descrição do documento e, quando há material parecido, herda o
+     * grupo/subgrupo dele como sugestão.
+     */
+    private List<ItemSugerido> casarItens(ExtracaoDocumentoCompra ex, List<String> avisos, boolean estoque) {
         if (ex.getItens().isEmpty()) return List.of();
-        List<Material> catalogo = materialRepository.findAll();
+        List<Material> catalogo = materialRepository
+                .findAll((Specification<Material>) (root, q, cb) -> cb.conjunction(), Pageable.unpaged())
+                .getContent();
         List<ItemSugerido> out = new ArrayList<>();
         for (ExtracaoDocumentoCompra.Item it : ex.getItens()) {
             Material m = melhorMaterial(it.getDescricao(), catalogo);
             Integer qtd = it.getQuantidade() == null ? 1
                     : Math.max(1, it.getQuantidade().setScale(0, RoundingMode.HALF_UP).intValue());
+            Subcategoria sub = m == null ? null : m.getSubcategoria();
             out.add(new ItemSugerido(it.getDescricao(), qtd, it.getUnidade(),
                     it.getValorUnitario() != null ? it.getValorUnitario() : BigDecimal.ZERO,
-                    m == null ? null : m.getId(), m == null ? null : m.getNome()));
-            if (m == null) {
+                    m == null ? null : m.getId(), m == null ? null : m.getNome(),
+                    sub == null || sub.getArea() == null ? null : sub.getArea().getId(),
+                    sub == null ? null : sub.getId()));
+            if (m == null && estoque) {
                 avisos.add("Item \"" + it.getDescricao() + "\" não encontrado no catálogo de materiais: selecione o material correspondente ou cadastre-o.");
             }
         }

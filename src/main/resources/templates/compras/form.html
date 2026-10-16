@@ -74,7 +74,7 @@
 
             <!-- ============ Passo 2: formulário da pré-compra ============ -->
             <form th:action="@{/compras}" th:object="${compra}" method="post"
-                  enctype="multipart/form-data" class="card">
+                  enctype="multipart/form-data" class="card" id="form-compra">
                 <div class="card-pad">
 
                     <input type="hidden" name="leituraId" th:if="${leituraId != null}" th:value="${leituraId}">
@@ -91,8 +91,9 @@
                                 <option th:each="t : ${tipos}" th:value="${t}" th:text="${t.rotulo}"></option>
                             </select>
                             <div class="form-text">
-                                <strong>Estoque</strong> repõe o almoxarifado; <strong>Direta</strong> vai ao setor;
-                                <strong>Patrimonial</strong> é bem permanente — descreva os itens e, no recebimento, segue ao Patrimônio.
+                                <strong>Estoque</strong> repõe o almoxarifado (itens do catálogo);
+                                <strong>Direta</strong> vai ao setor e <strong>Patrimonial</strong> é bem permanente —
+                                nas duas o item é descrito livremente e classificado por grupo/subgrupo.
                             </div>
                         </div>
 
@@ -157,7 +158,7 @@
                     </div>
 
                     <hr class="my-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                         <h6 class="text-muted text-uppercase small mb-0" style="letter-spacing:.05em;">
                             Itens solicitados
                         </h6>
@@ -166,44 +167,66 @@
                             <i class="bi bi-plus-lg"></i> Adicionar item
                         </button>
                     </div>
+                    <p class="form-text mt-0 mb-3" id="dica-itens">
+                        <span class="dica-estoque">Digite parte do nome, do SKU ou do grupo para localizar o material do catálogo. Só itens já cadastrados podem repor o estoque.</span>
+                        <span class="dica-livre d-none">Descreva o item como consta no documento e escolha o grupo e o subgrupo que classificam o gasto. Estes itens não entram no estoque.</span>
+                    </p>
 
                     <div class="table-responsive">
-                        <table class="table mb-0" id="tabela-itens">
+                        <table class="table mb-0 tabela-itens-compra" id="tabela-itens">
                             <thead>
                             <tr>
-                                <th style="width:50%">Material</th>
-                                <th style="width:15%">Quantidade</th>
-                                <th style="width:25%">Valor unitário (R$)</th>
-                                <th style="width:10%"></th>
+                                <th class="col-item">Material</th>
+                                <th class="col-grupo d-none">Grupo</th>
+                                <th class="col-subgrupo d-none">Subgrupo</th>
+                                <th class="col-qtd">Quantidade</th>
+                                <th class="col-valor">Valor unitário (R$)</th>
+                                <th class="col-acao"></th>
                             </tr>
                             </thead>
                             <tbody data-repeater data-repeater-template="#modelo-linha-item">
                             <!-- Linhas sugeridas pela leitura do anexo -->
                             <tr class="linha-item" data-repeater-item th:each="it : ${itensSugeridos}">
                                 <td>
-                                    <select name="itemMaterialId" class="form-select campo-material" required>
-                                        <option value="">— Selecione —</option>
-                                        <option th:each="m : ${materiais}"
-                                                th:value="${m.id}"
-                                                th:selected="${it.materialId != null and it.materialId == m.id}"
-                                                th:text="${m.nome + ' (' + m.unidadeMedida + ')'}"></option>
-                                    </select>
+                                    <div class="campo-material material-picker" data-material-picker>
+                                        <input type="hidden" name="itemMaterialId" class="picker-id" th:value="${it.materialId}">
+                                        <input type="text" class="form-control picker-busca" autocomplete="off" required
+                                               placeholder="Buscar material (nome, SKU, grupo)…"
+                                               th:value="${it.materialNome}">
+                                        <div class="picker-lista d-none" role="listbox"></div>
+                                        <div class="picker-selecionado form-text d-none"></div>
+                                    </div>
                                     <input type="text" name="itemDescricao" class="form-control campo-descricao d-none" maxlength="255"
-                                           placeholder="Descrição do bem (ex.: Impressora multifuncional Samsung M2070)"
+                                           placeholder="Descrição do item (ex.: Impressora multifuncional Samsung M2070)"
                                            th:value="${it.descricao}">
-                                    <div class="form-text" th:classappend="${it.casado} ? '' : 'text-warning'">
+                                    <div class="form-text dica-documento" th:classappend="${it.casado} ? '' : 'text-warning'">
                                         <i class="bi" th:classappend="${it.casado} ? 'bi-link-45deg' : 'bi-question-circle'"></i>
                                         No documento: <span th:text="${it.descricao}"></span>
                                         <span th:if="${it.unidade != null}" th:text="'(' + ${it.unidade} + ')'"></span>
-                                        <span th:unless="${it.casado}">— não encontrado no catálogo</span>
+                                        <span class="so-estoque" th:unless="${it.casado}">— não encontrado no catálogo</span>
                                     </div>
+                                </td>
+                                <td class="col-grupo d-none">
+                                    <select class="form-select campo-grupo" th:attr="data-area-id=${it.areaId}">
+                                        <option value="">— Grupo —</option>
+                                        <option th:each="a : ${areas}" th:value="${a.id}" th:text="${a.nome}"
+                                                th:selected="${it.areaId != null and it.areaId == a.id}"></option>
+                                    </select>
+                                </td>
+                                <td class="col-subgrupo d-none">
+                                    <select name="itemSubcategoriaId" class="form-select campo-subgrupo" th:attr="data-sub-id=${it.subcategoriaId}">
+                                        <option value="">— Subgrupo —</option>
+                                        <option th:each="sc : ${subcategorias}" th:value="${sc.id}" th:text="${sc.nome}"
+                                                th:attr="data-area=${sc.area.id}"
+                                                th:selected="${it.subcategoriaId != null and it.subcategoriaId == sc.id}"></option>
+                                    </select>
                                 </td>
                                 <td><input type="number" name="itemQuantidade" min="1" class="form-control" required th:value="${it.quantidade}"></td>
                                 <td><input type="number" name="itemValorUnitario" step="0.01" min="0"
                                            class="form-control" th:value="${it.valorUnitario}"></td>
-                                <td>
+                                <td class="text-end">
                                     <button type="button" class="btn btn-sm btn-outline-danger btn-remover"
-                                            data-repeater-remove>
+                                            data-repeater-remove title="Remover item">
                                         <i class="bi bi-x-lg"></i>
                                     </button>
                                 </td>
@@ -211,21 +234,35 @@
                             <!-- Linha em branco (sem leitura ou sem itens identificados) -->
                             <tr class="linha-item" data-repeater-item th:if="${itensSugeridos == null or #lists.isEmpty(itensSugeridos)}">
                                 <td>
-                                    <select name="itemMaterialId" class="form-select campo-material" required>
-                                        <option value="">— Selecione —</option>
-                                        <option th:each="m : ${materiais}"
-                                                th:value="${m.id}"
-                                                th:text="${m.nome + ' (' + m.unidadeMedida + ')'}"></option>
-                                    </select>
+                                    <div class="campo-material material-picker" data-material-picker>
+                                        <input type="hidden" name="itemMaterialId" class="picker-id">
+                                        <input type="text" class="form-control picker-busca" autocomplete="off" required
+                                               placeholder="Buscar material (nome, SKU, grupo)…">
+                                        <div class="picker-lista d-none" role="listbox"></div>
+                                        <div class="picker-selecionado form-text d-none"></div>
+                                    </div>
                                     <input type="text" name="itemDescricao" class="form-control campo-descricao d-none" maxlength="255"
-                                           placeholder="Descrição do bem (ex.: Impressora multifuncional Samsung M2070)">
+                                           placeholder="Descrição do item (ex.: Impressora multifuncional Samsung M2070)">
+                                </td>
+                                <td class="col-grupo d-none">
+                                    <select class="form-select campo-grupo">
+                                        <option value="">— Grupo —</option>
+                                        <option th:each="a : ${areas}" th:value="${a.id}" th:text="${a.nome}"></option>
+                                    </select>
+                                </td>
+                                <td class="col-subgrupo d-none">
+                                    <select name="itemSubcategoriaId" class="form-select campo-subgrupo">
+                                        <option value="">— Subgrupo —</option>
+                                        <option th:each="sc : ${subcategorias}" th:value="${sc.id}" th:text="${sc.nome}"
+                                                th:attr="data-area=${sc.area.id}"></option>
+                                    </select>
                                 </td>
                                 <td><input type="number" name="itemQuantidade" min="1" class="form-control" required></td>
                                 <td><input type="number" name="itemValorUnitario" step="0.01" min="0"
                                            class="form-control" value="0"></td>
-                                <td>
+                                <td class="text-end">
                                     <button type="button" class="btn btn-sm btn-outline-danger btn-remover"
-                                            data-repeater-remove>
+                                            data-repeater-remove title="Remover item">
                                         <i class="bi bi-x-lg"></i>
                                     </button>
                                 </td>
@@ -238,19 +275,33 @@
                     <template id="modelo-linha-item">
                         <tr class="linha-item" data-repeater-item>
                             <td>
-                                <select name="itemMaterialId" class="form-select campo-material" required>
-                                    <option value="">— Selecione —</option>
-                                    <option th:each="m : ${materiais}"
-                                            th:value="${m.id}"
-                                            th:text="${m.nome + ' (' + m.unidadeMedida + ')'}"></option>
-                                </select>
+                                <div class="campo-material material-picker" data-material-picker>
+                                    <input type="hidden" name="itemMaterialId" class="picker-id">
+                                    <input type="text" class="form-control picker-busca" autocomplete="off" required
+                                           placeholder="Buscar material (nome, SKU, grupo)…">
+                                    <div class="picker-lista d-none" role="listbox"></div>
+                                    <div class="picker-selecionado form-text d-none"></div>
+                                </div>
                                 <input type="text" name="itemDescricao" class="form-control campo-descricao d-none" maxlength="255"
-                                       placeholder="Descrição do bem (ex.: Impressora multifuncional Samsung M2070)">
+                                       placeholder="Descrição do item (ex.: Impressora multifuncional Samsung M2070)">
+                            </td>
+                            <td class="col-grupo d-none">
+                                <select class="form-select campo-grupo">
+                                    <option value="">— Grupo —</option>
+                                    <option th:each="a : ${areas}" th:value="${a.id}" th:text="${a.nome}"></option>
+                                </select>
+                            </td>
+                            <td class="col-subgrupo d-none">
+                                <select name="itemSubcategoriaId" class="form-select campo-subgrupo">
+                                    <option value="">— Subgrupo —</option>
+                                    <option th:each="sc : ${subcategorias}" th:value="${sc.id}" th:text="${sc.nome}"
+                                            th:attr="data-area=${sc.area.id}"></option>
+                                </select>
                             </td>
                             <td><input type="number" name="itemQuantidade" min="1" class="form-control" required></td>
                             <td><input type="number" name="itemValorUnitario" step="0.01" min="0" class="form-control" value="0"></td>
-                            <td>
-                                <button type="button" class="btn btn-sm btn-outline-danger btn-remover" data-repeater-remove>
+                            <td class="text-end">
+                                <button type="button" class="btn btn-sm btn-outline-danger btn-remover" data-repeater-remove title="Remover item">
                                     <i class="bi bi-x-lg"></i>
                                 </button>
                             </td>
@@ -287,15 +338,25 @@
     </main>
 </div>
 
+<!-- Catálogo enxuto para o seletor com busca (serializado pelo Thymeleaf) -->
+<script th:inline="javascript">
+    window.COMPRAS_CATALOGO = {
+        materiais: /*[[${materiaisOpcoes}]]*/ []
+    };
+</script>
+<script th:src="@{/js/material-picker.js}"></script>
 <script>
     (function () {
         const tipoSelect = document.getElementById('tipo');
         const setorSelect = document.getElementById('setor');
         const setorWrapper = document.getElementById('setor-wrapper');
+        const tabela = document.getElementById('tabela-itens');
+        const tbody = tabela.querySelector('tbody');
 
         /* Setor: obrigatório na DIRETA (RN08); opcional na PATRIMONIAL (destino pode ser
            informado no recebimento); escondido na ESTOQUE.
-           Itens: PATRIMONIAL descreve o bem livremente; os demais escolhem material do catálogo. */
+           Itens: ESTOQUE escolhe material do catálogo (seletor com busca);
+                  DIRETA/PATRIMONIAL descrevem o item e escolhem grupo/subgrupo. */
         function aplicarRegrasDoTipo() {
             const tipo = tipoSelect.value;
             const isDireta = tipo === 'DIRETA';
@@ -305,30 +366,90 @@
             setorSelect.disabled = !mostraSetor;
             setorSelect.required = isDireta;
             if (!mostraSetor) setorSelect.value = '';
-            aplicarModoItens(isPatrimonial, document);
+            aplicarModoItens(tabela);
         }
-        function aplicarModoItens(isPatrimonial, raiz) {
-            raiz.querySelectorAll('.campo-material').forEach((sel) => {
-                sel.classList.toggle('d-none', isPatrimonial);
-                sel.disabled = isPatrimonial;
-                sel.required = !isPatrimonial;
+
+        function modoLivre() {
+            const tipo = tipoSelect.value;
+            return tipo === 'DIRETA' || tipo === 'PATRIMONIAL';
+        }
+
+        function aplicarModoItens(raiz) {
+            const livre = modoLivre();
+            raiz.querySelectorAll('.campo-material').forEach((div) => {
+                div.classList.toggle('d-none', livre);
+                div.querySelectorAll('input').forEach((inp) => {
+                    inp.disabled = livre;
+                    if (inp.classList.contains('picker-busca')) inp.required = !livre;
+                });
             });
             raiz.querySelectorAll('.campo-descricao').forEach((inp) => {
-                inp.classList.toggle('d-none', !isPatrimonial);
-                inp.disabled = !isPatrimonial;
-                inp.required = isPatrimonial;
+                inp.classList.toggle('d-none', !livre);
+                inp.disabled = !livre;
+                inp.required = livre;
             });
-            const th = document.querySelector('#tabela-itens thead th:first-child');
-            if (th) th.textContent = isPatrimonial ? 'Bem (descrição)' : 'Material';
+            raiz.querySelectorAll('.col-grupo, .col-subgrupo').forEach((el) => el.classList.toggle('d-none', !livre));
+            raiz.querySelectorAll('.campo-grupo').forEach((sel) => {
+                sel.disabled = !livre;
+                sel.required = livre;
+            });
+            raiz.querySelectorAll('.campo-subgrupo').forEach((sel) => {
+                sel.disabled = !livre;
+                sel.required = livre;
+            });
+            raiz.querySelectorAll('.so-estoque').forEach((el) => el.classList.toggle('d-none', livre));
+            const th = tabela.querySelector('thead th.col-item');
+            if (th) th.textContent = livre ? (tipoSelect.value === 'PATRIMONIAL' ? 'Bem (descrição)' : 'Item (descrição)') : 'Material';
+            document.querySelector('#dica-itens .dica-estoque').classList.toggle('d-none', livre);
+            document.querySelector('#dica-itens .dica-livre').classList.toggle('d-none', !livre);
         }
+
+        /* Grupo → Subgrupo em cascata: o select de subgrupo traz todas as opções com
+           data-area; guardamos a lista completa e refazemos conforme o grupo. */
+        function prepararCascata(linha) {
+            const grupo = linha.querySelector('.campo-grupo');
+            const sub = linha.querySelector('.campo-subgrupo');
+            if (!grupo || !sub || sub._cascataPronta) return;
+            sub._cascataPronta = true;
+            const todas = Array.from(sub.querySelectorAll('option[data-area]')).map((o) => o.cloneNode(true));
+            const placeholder = sub.querySelector('option[value=""]').cloneNode(true);
+
+            // Pré-seleção vinda da leitura do anexo
+            const subInicial = sub.getAttribute('data-sub-id') || sub.value;
+            const areaInicial = grupo.getAttribute('data-area-id') || grupo.value
+                || (subInicial ? (todas.find((o) => o.value === String(subInicial)) || {}).getAttribute?.('data-area') : '');
+            if (areaInicial) grupo.value = String(areaInicial);
+
+            function refazer(manterSelecao) {
+                const areaId = grupo.value;
+                const atual = manterSelecao ? sub.value : '';
+                sub.innerHTML = '';
+                sub.appendChild(placeholder.cloneNode(true));
+                todas.filter((o) => !areaId || o.getAttribute('data-area') === areaId)
+                     .forEach((o) => sub.appendChild(o.cloneNode(true)));
+                sub.value = atual && Array.from(sub.options).some((o) => o.value === atual) ? atual : '';
+                sub.disabled = sub.disabled || false;
+            }
+            grupo.addEventListener('change', () => refazer(false));
+            refazer(true);
+            if (subInicial) sub.value = String(subInicial);
+        }
+
         tipoSelect.addEventListener('change', aplicarRegrasDoTipo);
+        tbody.querySelectorAll('.linha-item').forEach(prepararCascata);
         aplicarRegrasDoTipo();
+
         // Linhas adicionadas depois pelo repeater também seguem o modo atual
-        const tbody = document.querySelector('#tabela-itens tbody');
-        if (tbody) {
-            new MutationObserver(() => aplicarModoItens(tipoSelect.value === 'PATRIMONIAL', tbody))
-                .observe(tbody, { childList: true });
-        }
+        new MutationObserver((mutacoes) => {
+            mutacoes.forEach((m) => m.addedNodes.forEach((n) => {
+                if (n.nodeType !== 1) return;
+                if (window.MaterialPicker) window.MaterialPicker.init(n);
+                prepararCascata(n);
+                aplicarModoItens(n);
+                const foco = n.querySelector(modoLivre() ? '.campo-descricao' : '.picker-busca');
+                if (foco) foco.focus();
+            }));
+        }).observe(tbody, { childList: true });
     })();
 </script>
 <script th:src="@{/js/repeater.js}" defer></script>

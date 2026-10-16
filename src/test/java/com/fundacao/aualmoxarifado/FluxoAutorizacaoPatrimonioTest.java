@@ -4,6 +4,7 @@ import com.fundacao.aualmoxarifado.domain.*;
 import com.fundacao.aualmoxarifado.repository.*;
 import com.fundacao.aualmoxarifado.service.CompraService;
 import com.fundacao.aualmoxarifado.service.integracao.PatrimonioIntegracaoService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +49,14 @@ class FluxoAutorizacaoPatrimonioTest {
     private MockMvc mvc;
     private Setor nucleoSaude;
     private Material luva;
+    private Subcategoria sub;
+
+    /** O contexto/H2 é compartilhado entre classes: não deixar envio_patrimonio apontando para compras
+        que outra classe vai apagar com compraRepository.deleteAll(). */
+    @AfterEach
+    void limparEnvios() {
+        envioRepository.deleteAll();
+    }
 
     @BeforeEach
     void cenario() {
@@ -63,7 +72,7 @@ class FluxoAutorizacaoPatrimonioTest {
         setorRepository.deleteAll();
 
         Area area = areaRepository.save(Area.builder().nome("Saúde FluxoTest").sigla("SAUFT").build());
-        Subcategoria sub = subcategoriaRepository.save(Subcategoria.builder()
+        sub = subcategoriaRepository.save(Subcategoria.builder()
                 .nome("Descartáveis FluxoTest").sigla("DESFT").area(area).proximoSequencial(1).build());
         luva = materialRepository.save(Material.builder().nome("Luva M").codigoSku("SAU-DES-00001")
                 .unidadeMedida("CX").estoqueAtual(10).estoqueMinimo(1).subcategoria(sub).build());
@@ -91,6 +100,7 @@ class FluxoAutorizacaoPatrimonioTest {
                         .param("numeroDocumento", "001/2026")
                         .param("itemMaterialId", "")
                         .param("itemDescricao", "Impressora multifuncional Samsung M2070")
+                        .param("itemSubcategoriaId", sub.getId().toString())
                         .param("itemQuantidade", "1")
                         .param("itemValorUnitario", "1200.00"))
                 .andExpect(status().is3xxRedirection())
@@ -104,6 +114,7 @@ class FluxoAutorizacaoPatrimonioTest {
         assertThat(comItens.getItens()).hasSize(1);
         assertThat(comItens.getItens().get(0).getMaterial()).isNull();
         assertThat(comItens.getItens().get(0).getNomeItem()).isEqualTo("Impressora multifuncional Samsung M2070");
+        assertThat(comItens.getItens().get(0).getSubcategoria().getId()).isEqualTo(sub.getId());
 
         // 2) Sem a Diretoria, a baixa é barrada
         mvc.perform(multipart("/compras/" + compra.getId() + "/baixa").with(csrf())

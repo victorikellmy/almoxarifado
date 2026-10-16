@@ -9,6 +9,7 @@ import com.fundacao.aualmoxarifado.repository.CompraRepository;
 import com.fundacao.aualmoxarifado.service.integracao.PatrimonioIntegracaoService;
 import com.fundacao.aualmoxarifado.repository.MaterialRepository;
 import com.fundacao.aualmoxarifado.repository.SetorRepository;
+import com.fundacao.aualmoxarifado.repository.SubcategoriaRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -45,6 +46,7 @@ public class CompraService {
 
     private final CompraRepository compraRepository;
     private final MaterialRepository materialRepository;
+    private final SubcategoriaRepository subcategoriaRepository;
     private final SetorRepository setorRepository;
     private final AnexoStorageService anexoStorageService;
     private final MovimentacaoService movimentacaoService;
@@ -106,6 +108,14 @@ public class CompraService {
             compra.setSetorSolicitante(null);
         }
 
+        // Campos de texto vazios vindos do formulário viram null (a listagem mostra "Doc. nº" só quando existe).
+        compra.setNumeroDocumento(nuloSeVazio(compra.getNumeroDocumento()));
+        compra.setNumeroSgd(nuloSeVazio(compra.getNumeroSgd()));
+        compra.setAssunto(nuloSeVazio(compra.getAssunto()));
+        compra.setSolicitanteDocumento(nuloSeVazio(compra.getSolicitanteDocumento()));
+        compra.setFornecedor(nuloSeVazio(compra.getFornecedor()));
+        compra.setObservacao(nuloSeVazio(compra.getObservacao()));
+
         // Estado inicial obrigatório (RF14).
         compra.setStatus(StatusCompra.AGUARDANDO_COMPRA);
         compra.setDataSolicitacao(
@@ -118,16 +128,30 @@ public class CompraService {
         compra.setAutorizadoPor(null);
         compra.setAutorizadoEm(null);
 
-        boolean patrimonial = compra.getTipo() == TipoCompra.PATRIMONIAL;
+        boolean estoque = compra.getTipo() == TipoCompra.ESTOQUE;
 
-        // Resolve Material de cada item e amarra ao agregado Compra.
+        // Resolve Material/Subcategoria de cada item e amarra ao agregado Compra.
+        //  - ESTOQUE: só o que está no catálogo (o saldo será creditado na baixa).
+        //  - DIRETA/PATRIMONIAL: não repõem o almoxarifado — o item é descrito
+        //    livremente e classificado por grupo/subgrupo escolhido aqui mesmo.
+        //    (Um material do catálogo continua aceito, para registros legados.)
         for (ItemCompra item : itens) {
             boolean temMaterial = item.getMaterial() != null && item.getMaterial().getId() != null;
             boolean temDescricao = item.getDescricao() != null && !item.getDescricao().isBlank();
-            if (!temMaterial && !(patrimonial && temDescricao)) {
-                throw new IllegalArgumentException(patrimonial
-                        ? "Descreva o bem em cada item da compra patrimonial."
-                        : "Item sem material selecionado.");
+            boolean temSubcategoria = item.getSubcategoria() != null && item.getSubcategoria().getId() != null;
+            if (estoque) {
+                if (!temMaterial) {
+                    throw new IllegalArgumentException(
+                            "Compra de ESTOQUE: selecione um material do catálogo em cada item.");
+                }
+            } else if (!temMaterial) {
+                if (!temDescricao) {
+                    throw new IllegalArgumentException("Descreva cada item da compra.");
+                }
+                if (!temSubcategoria) {
+                    throw new IllegalArgumentException(
+                            "Informe o grupo e o subgrupo de cada item da compra.");
+                }
             }
             if (item.getQuantidade() == null || item.getQuantidade() <= 0) {
                 throw new IllegalArgumentException("Quantidade do item deve ser maior que zero.");
@@ -139,6 +163,14 @@ public class CompraService {
                 item.setMaterial(material);
             } else {
                 item.setMaterial(null);
+            }
+            if (!estoque && temSubcategoria) {
+                Subcategoria sub = subcategoriaRepository.findById(item.getSubcategoria().getId())
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "Subgrupo id=" + item.getSubcategoria().getId() + " não encontrado."));
+                item.setSubcategoria(sub);
+            } else {
+                item.setSubcategoria(null);   // item de catálogo: a classificação é a do material
             }
             if (temDescricao) {
                 item.setDescricao(item.getDescricao().trim());
@@ -364,21 +396,36 @@ public class CompraService {
                     "RN10: compra direta sem setor solicitante — impossível repassar.");
         }
 
+        // Itens descritos livremente (sem material do catálogo) não se vinculam
+        // ao estoque: ficam só na compra, classificados por grupo/subgrupo.
+        List<MovimentacaoService.LinhaItem> linhas = linhasDe(compra);
+        if (linhas.isEmpty()) {
+            log.info("[Compras] Compra direta #{} sem itens de catálogo — nenhuma movimentação gerada.",
+                    compra.getId());
+            return;
+        }
+
         movimentacaoService.registrarCompraDireta(
                 setorDestino,
                 "Compra Direta #" + compra.getId(),
                 compra.getFornecedor(),
                 compra.getNumeroNotaFiscal(),
                 "Repasse direto da Compra #" + compra.getId(),
-                linhasDe(compra));
+                linhas);
+    }
+
+    private static String nuloSeVazio(String valor) {
+        return valor == null || valor.isBlank() ? null : valor.trim();
     }
 
     /**
-     * Mapeia os itens da compra para as linhas do MovimentacaoService.
+     * Mapeia os itens de catálogo da compra para as linhas do MovimentacaoService;
+     * itens sem material (descrição livre) ficam de fora.
      * (getId() no proxy lazy de Material não inicializa a entidade.)
      */
     private static List<MovimentacaoService.LinhaItem> linhasDe(Compra compra) {
         return compra.getItens().stream()
+                .filter(it -> it.getMaterial() != null)
                 .map(it -> new MovimentacaoService.LinhaItem(
                         it.getMaterial().getId(), it.getQuantidade()))
                 .toList();

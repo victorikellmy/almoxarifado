@@ -45,8 +45,11 @@ public record CompraDetalheDTO(
 ) {
     public record ItemCompraDTO(
             Long materialId,
-            String materialNome,
+            String materialNome,          // nome do material do catálogo ou a descrição livre
             String codigoSku,
+            String descricao,             // descrição livre (DIRETA/PATRIMONIAL)
+            String grupo,                 // Área (do material ou escolhida na compra)
+            String subgrupo,              // Subcategoria (idem)
             Integer quantidade,
             BigDecimal valorUnitario,
             BigDecimal subtotal
@@ -57,6 +60,9 @@ public record CompraDetalheDTO(
                     m != null ? m.getId() : null,
                     i.getNomeItem(),
                     m != null ? m.getCodigoSku() : null,
+                    i.getDescricao(),
+                    i.getGrupo(),
+                    i.getSubgrupo(),
                     i.getQuantidade(),
                     i.getValorUnitario(),
                     i.getSubtotal());

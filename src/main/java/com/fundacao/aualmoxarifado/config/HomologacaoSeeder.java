@@ -222,8 +222,8 @@ public class HomologacaoSeeder implements CommandLineRunner {
         // 5) Patrimonial autorizada, aguardando baixa (itens descritos livremente).
         Compra patrimonial = precompra(TipoCompra.PATRIMONIAL, transporte, "Magazine Escritório",
                 "Ofício nº 120/2026", "Mobiliário para a sala de Transporte", "Carlos Regino",
-                itemLivre("Cadeira giratória com braços", 4, "690.00"),
-                itemLivre("Armário de aço 2 portas", 1, "1250.00"));
+                itemLivre("Cadeira giratória com braços", "Resma", 4, "690.00"),
+                itemLivre("Armário de aço 2 portas", "Resma", 1, "1250.00"));
         autorizar(patrimonial);
 
         // 6) Não autorizada pela Diretoria (vira cancelada, com parecer).
@@ -268,9 +268,11 @@ public class HomologacaoSeeder implements CommandLineRunner {
                 .build();
     }
 
-    private ItemCompra itemLivre(String descricao, int qtd, String valor) {
+    /** Item sem vínculo com o estoque: descrição livre + grupo/subgrupo (herdado de um material parecido). */
+    private ItemCompra itemLivre(String descricao, String trechoMaterialDoGrupo, int qtd, String valor) {
         return ItemCompra.builder()
                 .descricao(descricao)
+                .subcategoria(material(trechoMaterialDoGrupo).getSubcategoria())
                 .quantidade(qtd)
                 .valorUnitario(new BigDecimal(valor))
                 .build();

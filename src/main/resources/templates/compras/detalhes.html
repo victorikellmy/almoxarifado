@@ -197,6 +197,11 @@
                             <td class="fw-semibold">
                                 <span th:text="${i.nomeItem}"></span>
                                 <small class="d-block text-muted fw-normal" th:if="${i.material != null and i.descricao != null}" th:text="${i.descricao}"></small>
+                                <small class="d-block text-muted fw-normal" th:if="${i.subgrupo != null}">
+                                    <i class="bi bi-diagram-3"></i>
+                                    <span th:text="${i.grupo != null ? i.grupo + ' › ' + i.subgrupo : i.subgrupo}"></span>
+                                    <span th:if="${i.material != null and i.material.codigoSku != null}" class="ms-1 font-monospace" th:text="${i.material.codigoSku}"></span>
+                                </small>
                             </td>
                             <td class="text-end" th:text="${i.quantidade}"></td>
                             <td class="text-end" th:text="${#numbers.formatCurrency(i.valorUnitario)}"></td>

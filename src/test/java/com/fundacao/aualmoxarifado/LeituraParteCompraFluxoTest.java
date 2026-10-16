@@ -50,6 +50,7 @@ class LeituraParteCompraFluxoTest {
 
     private MockMvc mvc;
     private Material papel;
+    private Subcategoria papelaria;
     private Setor bpm5;
 
     @BeforeEach
@@ -70,6 +71,7 @@ class LeituraParteCompraFluxoTest {
         Area area = areaRepository.save(Area.builder().nome("Escritório LeituraTest").sigla("ESCLT").build());
         Subcategoria sub = subcategoriaRepository.save(Subcategoria.builder()
                 .nome("Papelaria LeituraTest").sigla("PAPLT").area(area).proximoSequencial(1).build());
+        papelaria = sub;
         papel = materialRepository.save(Material.builder()
                 .nome("Papel A4 75g").unidadeMedida("cx").estoqueAtual(0).estoqueMinimo(5).subcategoria(sub).build());
         materialRepository.save(Material.builder()
@@ -127,6 +129,9 @@ class LeituraParteCompraFluxoTest {
         assertThat(itens.get(0).quantidade()).isEqualTo(10);
         assertThat(itens.get(0).valorUnitario()).isEqualByComparingTo("25.90");
         assertThat(itens.get(1).materialNome()).isEqualTo("Grampeador de mesa");
+        // compra DIRETA: o item casado sugere o grupo/subgrupo do material parecido
+        assertThat(itens.get(0).subcategoriaId()).isEqualTo(papelaria.getId());
+        assertThat(itens.get(0).areaId()).isEqualTo(papelaria.getArea().getId());
 
         String leituraId = (String) leitura.getModelAndView().getModel().get("leituraId");
 
@@ -141,7 +146,9 @@ class LeituraParteCompraFluxoTest {
                         .param("dataDocumento", "2026-01-05")
                         .param("assunto", preenchida.getAssunto())
                         .param("solicitanteDocumento", preenchida.getSolicitanteDocumento())
-                        .param("itemMaterialId", papel.getId().toString())
+                        // Compra DIRETA não se vincula ao estoque: descrição livre + grupo/subgrupo
+                        .param("itemDescricao", "Papel A4 75g")
+                        .param("itemSubcategoriaId", papelaria.getId().toString())
                         .param("itemQuantidade", "10")
                         .param("itemValorUnitario", "25.90")
                         .param("leituraId", leituraId))
@@ -156,6 +163,9 @@ class LeituraParteCompraFluxoTest {
         assertThat(salva.getNumeroSgd()).isEqualTo("2026/09039/000999");
         assertThat(salva.getValorEstimado()).isEqualByComparingTo(new BigDecimal("259.00"));
         assertThat(salva.getItens()).hasSize(1);
+        assertThat(salva.getItens().get(0).getMaterial()).isNull();
+        assertThat(salva.getItens().get(0).getDescricao()).isEqualTo("Papel A4 75g");
+        assertThat(salva.getItens().get(0).getSubcategoria().getId()).isEqualTo(papelaria.getId());
 
         Compra comAnexos = compraRepository.findByIdComAnexos(salva.getId()).orElseThrow();
         assertThat(comAnexos.getAnexos()).hasSize(1);

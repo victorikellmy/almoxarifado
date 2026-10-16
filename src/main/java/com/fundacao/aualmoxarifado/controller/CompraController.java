@@ -1,7 +1,10 @@
 package com.fundacao.aualmoxarifado.controller;
 
 import com.fundacao.aualmoxarifado.domain.*;
+import com.fundacao.aualmoxarifado.repository.AreaRepository;
 import com.fundacao.aualmoxarifado.repository.MaterialRepository;
+import com.fundacao.aualmoxarifado.repository.SubcategoriaRepository;
+import org.springframework.data.jpa.domain.Specification;
 import com.fundacao.aualmoxarifado.repository.SetorRepository;
 import com.fundacao.aualmoxarifado.service.AnexoStorageService;
 import com.fundacao.aualmoxarifado.service.CompraService;
@@ -29,7 +32,10 @@ import org.springframework.web.multipart.MultipartFile;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Controller MVC do Módulo de Compras (RF14/RF15/RF16).
@@ -52,6 +58,8 @@ public class CompraController {
 
     private final CompraService compraService;
     private final MaterialRepository materialRepository;
+    private final SubcategoriaRepository subcategoriaRepository;
+    private final AreaRepository areaRepository;
     private final SetorRepository setorRepository;
     private final AnexoStorageService anexoStorageService;
     private final LeituraParteCompraService leituraParteCompraService;
@@ -138,6 +146,7 @@ public class CompraController {
                                   @RequestParam(required = false) Long setorSolicitanteId,
                                   @RequestParam(name = "itemMaterialId", required = false) List<String> materiaisIds,
                                   @RequestParam(name = "itemDescricao", required = false) List<String> descricoes,
+                                  @RequestParam(name = "itemSubcategoriaId", required = false) List<String> subcategoriasIds,
                                   @RequestParam(name = "itemQuantidade", required = false) List<Integer> quantidades,
                                   @RequestParam(name = "itemValorUnitario", required = false) List<BigDecimal> valoresUnit,
                                   @RequestParam(name = "pdfSolicitacao", required = false) MultipartFile pdfSolicitacao,
@@ -160,7 +169,7 @@ public class CompraController {
                 }
             }
 
-            List<ItemCompra> itens = montarItens(materiaisIds, descricoes, quantidades, valoresUnit);
+            List<ItemCompra> itens = montarItens(materiaisIds, descricoes, subcategoriasIds, quantidades, valoresUnit);
             compraService.criarPreCompra(compra, itens, pdfSolicitacao, pdfLido);
 
             if (leituraId != null && !leituraId.isBlank()) {
@@ -316,9 +325,41 @@ public class CompraController {
     // HELPERS PRIVADOS
     // =====================================================================
 
+    private static Long parseId(String valor) {
+        return (valor == null || valor.isBlank()) ? null : Long.valueOf(valor.trim());
+    }
+
     private void prepararFormulario(Model model, Compra compra) {
         model.addAttribute("compra", compra);
-        model.addAttribute("materiais", materialRepository.findAll());
+        // Catálogo com subcategoria/área carregadas (open-in-view=false): alimenta o
+        // seletor com busca dos itens de ESTOQUE e o preenchimento de grupo/subgrupo.
+        List<Material> materiais = materialRepository
+                .findAll((Specification<Material>) (root, q, cb) -> cb.conjunction(), Pageable.unpaged(Sort.by("nome")))
+                .getContent();
+        model.addAttribute("materiais", materiais);
+        // Versão enxuta do catálogo, serializada no HTML (th:inline) para o seletor com busca.
+        List<Map<String, Object>> opcoes = new ArrayList<>(materiais.size());
+        for (Material m : materiais) {
+            Subcategoria sc = m.getSubcategoria();
+            Map<String, Object> o = new LinkedHashMap<>();
+            o.put("id", m.getId());
+            o.put("nome", m.getNome());
+            o.put("sku", m.getCodigoSku());
+            o.put("unidade", m.getUnidadeMedida());
+            o.put("estoque", m.getEstoqueAtual());
+            o.put("minimo", m.getEstoqueMinimo());
+            o.put("subId", sc != null ? sc.getId() : null);
+            o.put("subgrupo", sc != null ? sc.getNome() : null);
+            o.put("areaId", sc != null && sc.getArea() != null ? sc.getArea().getId() : null);
+            o.put("grupo", sc != null && sc.getArea() != null ? sc.getArea().getNome() : null);
+            opcoes.add(o);
+        }
+        model.addAttribute("materiaisOpcoes", opcoes);
+        model.addAttribute("subcategorias", subcategoriaRepository.findAll().stream()
+                .sorted(Comparator.comparing((Subcategoria sc) -> sc.getArea().getNome(), String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(Subcategoria::getNome, String.CASE_INSENSITIVE_ORDER))
+                .toList());
+        model.addAttribute("areas", areaRepository.findAllByOrderByNomeAsc());
         model.addAttribute("setores", setorRepository.listarOrdenados());
         model.addAttribute("tipos", TipoCompra.values());
         model.addAttribute("iaHabilitada", extracaoIaService.isHabilitada());
@@ -332,6 +373,7 @@ public class CompraController {
      */
     private List<ItemCompra> montarItens(List<String> materiaisIds,
                                          List<String> descricoes,
+                                         List<String> subcategoriasIds,
                                          List<Integer> quantidades,
                                          List<BigDecimal> valoresUnit) {
         List<ItemCompra> itens = new ArrayList<>();
@@ -340,7 +382,9 @@ public class CompraController {
         for (int i = 0; i < linhas; i++) {
             String matIdStr = materiaisIds != null && i < materiaisIds.size() ? materiaisIds.get(i) : null;
             String descricao = descricoes != null && i < descricoes.size() ? descricoes.get(i) : null;
-            Long matId = (matIdStr == null || matIdStr.isBlank()) ? null : Long.valueOf(matIdStr.trim());
+            String subIdStr = subcategoriasIds != null && i < subcategoriasIds.size() ? subcategoriasIds.get(i) : null;
+            Long matId = parseId(matIdStr);
+            Long subId = parseId(subIdStr);
             if (matId == null && (descricao == null || descricao.isBlank())) {
                 continue; // linha vazia — usuário removeu ou não preencheu
             }
@@ -348,6 +392,11 @@ public class CompraController {
             if (matId != null) {
                 m = new Material();
                 m.setId(matId);
+            }
+            Subcategoria sub = null;
+            if (subId != null) {
+                sub = new Subcategoria();
+                sub.setId(subId);
             }
 
             Integer qtd = (quantidades != null && i < quantidades.size()) ? quantidades.get(i) : null;
@@ -357,6 +406,7 @@ public class CompraController {
 
             itens.add(ItemCompra.builder()
                     .material(m)
+                    .subcategoria(sub)
                     .descricao(descricao == null || descricao.isBlank() ? null : descricao.trim())
                     .quantidade(qtd)
                     .valorUnitario(valor != null ? valor : BigDecimal.ZERO)

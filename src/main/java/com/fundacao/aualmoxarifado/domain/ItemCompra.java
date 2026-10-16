@@ -17,7 +17,8 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "item_compra", indexes = {
         @Index(name = "idx_item_compra_compra",   columnList = "compra_id"),
-        @Index(name = "idx_item_compra_material", columnList = "material_id")
+        @Index(name = "idx_item_compra_material", columnList = "material_id"),
+        @Index(name = "idx_item_compra_subcategoria", columnList = "subcategoria_id")
 })
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ItemCompra {
@@ -39,9 +40,19 @@ public class ItemCompra {
     @JoinColumn(name = "material_id")
     private Material material;
 
-    /** Descrição livre do item (bens patrimoniais) ou complemento ao material. */
+    /** Descrição livre do item (compras DIRETA/PATRIMONIAL) ou complemento ao material. */
     @Column(length = 255)
     private String descricao;
+
+    /**
+     * Grupo/subgrupo escolhido na própria compra para itens que não vêm do
+     * catálogo (DIRETA e PATRIMONIAL): classifica o gasto sem exigir cadastro
+     * de material. O grupo (Área) é alcançado via {@code subcategoria.area}.
+     * Para itens de catálogo fica nulo — a classificação é a do material.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subcategoria_id")
+    private Subcategoria subcategoria;
 
     @NotNull
     @Positive(message = "Quantidade do item deve ser maior que zero")
@@ -60,6 +71,27 @@ public class ItemCompra {
     public String getNomeItem() {
         if (material != null && material.getNome() != null) return material.getNome();
         return descricao != null ? descricao : "—";
+    }
+
+    /** Subcategoria efetiva: a escolhida na compra ou, para item de catálogo, a do material. */
+    @Transient
+    public Subcategoria getSubcategoriaEfetiva() {
+        if (subcategoria != null) return subcategoria;
+        return material != null ? material.getSubcategoria() : null;
+    }
+
+    /** Nome do grupo (Área) para exibição, ou null. */
+    @Transient
+    public String getGrupo() {
+        Subcategoria s = getSubcategoriaEfetiva();
+        return s != null && s.getArea() != null ? s.getArea().getNome() : null;
+    }
+
+    /** Nome do subgrupo (Subcategoria) para exibição, ou null. */
+    @Transient
+    public String getSubgrupo() {
+        Subcategoria s = getSubcategoriaEfetiva();
+        return s != null ? s.getNome() : null;
     }
 
     /** Subtotal do item (quantidade × valorUnitario), calculado no Service. */

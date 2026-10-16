@@ -2019,3 +2019,39 @@ a > .stat-card:hover { transform: translateY(-1px); }
 [data-theme="dark"] .status-pill.status-erro           { background: rgba(239,68,68,.18);  color: #fca5a5; }
 [data-theme="dark"] .status-pill.status-pendente       { background: rgba(245,158,11,.18); color: #fcd34d; }
 .badge.badge-patrimonial { background: var(--primary-600); color: #fff; }
+
+/* ===== Compras: itens — seletor de material com busca e grupo/subgrupo ===== */
+.tabela-itens-compra th.col-item   { width: 38%; }
+.tabela-itens-compra th.col-grupo,
+.tabela-itens-compra th.col-subgrupo { width: 16%; }
+.tabela-itens-compra th.col-qtd    { width: 10%; }
+.tabela-itens-compra th.col-valor  { width: 14%; }
+.tabela-itens-compra th.col-acao   { width: 48px; }
+.tabela-itens-compra td { vertical-align: top; }
+
+.material-picker { position: relative; }
+.material-picker.tem-selecao .picker-busca {
+    border-color: var(--success);
+    background-image: none;
+}
+.picker-lista {
+    position: fixed; z-index: 1050;            /* escapa do overflow da .table-responsive; JS posiciona */
+    max-height: 320px; overflow-y: auto;
+    background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--radius-md, 10px);
+    box-shadow: 0 12px 32px rgba(42, 33, 57, .16);
+}
+.picker-opcao {
+    padding: .5rem .75rem; cursor: pointer;
+    border-bottom: 1px solid var(--border);
+}
+.picker-opcao:last-child { border-bottom: 0; }
+.picker-opcao:hover, .picker-opcao.ativo { background: var(--bg-hover); }
+.picker-opcao-nome { font-weight: 500; color: var(--text-primary); }
+.picker-opcao-meta {
+    display: flex; flex-wrap: wrap; gap: .25rem .75rem;
+    font-size: .78rem; color: var(--text-muted); margin-top: 2px;
+}
+.picker-vazio { padding: .75rem; font-size: .85rem; color: var(--text-muted); }
+.picker-selecionado { margin-top: .25rem; }
+[data-theme="dark"] .picker-lista { box-shadow: 0 12px 32px rgba(0, 0, 0, .5); }

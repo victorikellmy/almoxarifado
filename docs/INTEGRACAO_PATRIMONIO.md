@@ -62,7 +62,7 @@ endpoint) e configurar no Almoxarifado `PATRIMONIO_USUARIO` / `PATRIMONIO_SENHA`
   "registradoPor": "sarah.luz",
   "observacao": "Reparo impressora Samsung · Parte/Ofício 001/2026 · Solicitação para pagamento",
   "itens": [
-    { "descricao": "Impressora multifuncional Samsung", "codigoSku": null, "quantidade": 1, "valorUnitario": 320.00 }
+    { "descricao": "Impressora multifuncional Samsung", "codigoSku": null, "grupo": "Informática", "subgrupo": "Equipamentos", "quantidade": 1, "valorUnitario": 320.00 }
   ],
   "anexos": [
     { "tipo": "SOLICITACAO", "nomeOriginal": "Oficio 001-2026.pdf", "contentType": "application/pdf", "tamanhoBytes": 61730, "conteudoBase64": null },
@@ -71,6 +71,9 @@ endpoint) e configurar no Almoxarifado `PATRIMONIO_USUARIO` / `PATRIMONIO_SENHA`
 }
 ```
 
+- `itens[].grupo` / `itens[].subgrupo` (desde 16/10/2026): Área e Subcategoria escolhidas na compra para o
+  item (ou as do material do catálogo, quando houver). Campos aditivos — podem ser ignorados ou usados
+  para sugerir a categoria do bem no Patrimônio. `codigoSku` continua nulo para itens sem material.
 - Só o anexo `NOTA_FISCAL` vem com `conteudoBase64` (PDF, até 10 MB). O da `SOLICITACAO` é só metadado.
 - `compraId` é único por recebimento: **chave de idempotência**.
 - Datas ISO-8601, valores numéricos.

@@ -135,6 +135,8 @@ public class PatrimonioIntegracaoService {
                 .map(i -> new RecebimentoPatrimonioPayload.Item(
                         i.getNomeItem(),
                         i.getMaterial() != null ? i.getMaterial().getCodigoSku() : null,
+                        i.getGrupo(),
+                        i.getSubgrupo(),
                         i.getQuantidade(),
                         i.getValorUnitario()))
                 .toList();

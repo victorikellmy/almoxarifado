@@ -40,6 +40,8 @@ public record RecebimentoPatrimonioPayload(
     public record Item(
             String descricao,
             String codigoSku,             // nulo para itens patrimoniais sem material do catálogo
+            String grupo,                 // Área escolhida na compra (ou a do material)
+            String subgrupo,              // Subcategoria escolhida na compra (ou a do material)
             Integer quantidade,
             BigDecimal valorUnitario
     ) {}

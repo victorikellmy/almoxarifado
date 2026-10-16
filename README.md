@@ -35,7 +35,7 @@ Produção roda em container (`Dockerfile`), com PostgreSQL via variáveis de am
 | GET | `/api/movimentacoes/{id}` | qualquer | Detalhe com `observacao`, auditoria (`criadoPor/Em`, `atualizadoPor/Em`) e `itens[]` |
 | POST | `/api/movimentacoes/{id}/status` | **ADMIN** | Aprovar / entregar / rejeitar uma saída (ver regras abaixo) |
 | GET | `/api/compras` | qualquer | Compras paginadas, filtro opcional `status` (`AGUARDANDO_COMPRA`, `COMPRA_REALIZADA`, `CANCELADA`) |
-| GET | `/api/compras/{id}` | qualquer | Detalhe com `itens[]`, `anexos[]` (metadados) e dados do documento de origem |
+| GET | `/api/compras/{id}` | qualquer | Detalhe com `itens[]` (`materialNome`, `descricao`, `grupo`, `subgrupo`, `codigoSku`), `anexos[]` (metadados) e dados do documento de origem |
 | GET | `/api/relatorios/*` | qualquer | Relatórios JSON e exportações CSV/XLSX/PDF |
 | GET | `/api/auditoria/**` | **ADMIN** | Trilha de auditoria |
 | POST | `/api/importacao/materiais` | **ADMIN** | Importação de planilha |
@@ -82,6 +82,11 @@ FA-Saúde, espelhando os grupos de rede do servidor de arquivos.
 - **Decisão da Diretoria**: toda pré-compra nasce "Aguardando diretoria". Em *Compras → detalhes* o setor
   registra **Diretoria autorizou** ou **Não autorizou** (com parecer; cancela a pré-compra). A baixa só é
   liberada quando autorizada. Também pela API: `POST /api/compras/{id}/autorizacao`.
+- **Itens por tipo de compra**: em **ESTOQUE** só entram materiais já cadastrados no catálogo — o
+  formulário tem um seletor com busca (nome, SKU, grupo/subgrupo, estoque atual) e o saldo é creditado
+  na baixa. Em **DIRETA** e **PATRIMONIAL** o item não se vincula ao estoque: o colaborador descreve o
+  item livremente e escolhe **grupo** (Área) e **subgrupo** (Subcategoria) na própria compra
+  (`item_compra.subcategoria_id`, migration V6); a baixa dessas compras não gera movimentação.
 - **Compra PATRIMONIAL**: bens permanentes, itens descritos livremente, sem movimentar estoque. No
   recebimento informa-se NF, **quem retirou** e **setor de destino**; o recebimento vai para a fila de
   envio ao **Gerenciador Patrimonial** (também disponível para compras DIRETAS via "será patrimoniado").

@@ -43,7 +43,11 @@ public interface CompraRepository extends JpaRepository<Compra, Long> {
     @Query("""
            SELECT DISTINCT c FROM Compra c
            LEFT JOIN FETCH c.itens i
-           LEFT JOIN FETCH i.material
+           LEFT JOIN FETCH i.material m
+           LEFT JOIN FETCH m.subcategoria ms
+           LEFT JOIN FETCH ms.area
+           LEFT JOIN FETCH i.subcategoria s
+           LEFT JOIN FETCH s.area
            LEFT JOIN FETCH c.setorSolicitante
            WHERE c.id = :id
            """)

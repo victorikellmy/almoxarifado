@@ -44,6 +44,7 @@ class CompraListagemLazyTest {
     @Autowired SubcategoriaRepository subcategoriaRepository;
     @Autowired MaterialRepository materialRepository;
     @Autowired CompraRepository compraRepository;
+    @Autowired MovimentacaoRepository movimentacaoRepository;
 
     private MockMvc mvc;
     private Long compraId;
@@ -58,6 +59,8 @@ class CompraListagemLazyTest {
         // entre classes de teste com a mesma configuração, então cada método
         // aqui recriaria "Escritório"/"ESC" e colidiria com a UNIQUE constraint
         // se o cenário anterior não fosse removido primeiro.
+        // Contexto/H2 compartilhado: movimentações de outras classes referenciam material.
+        movimentacaoRepository.deleteAll();
         compraRepository.deleteAll();
         materialRepository.deleteAll();
         subcategoriaRepository.deleteAll();
