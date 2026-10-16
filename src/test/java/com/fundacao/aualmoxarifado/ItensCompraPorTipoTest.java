@@ -172,7 +172,7 @@ class ItensCompraPorTipoTest {
     }
 
     @Test
-    void payloadDoPatrimonio_levaGrupoESubgrupoDoItem() {
+    void payloadDoPatrimonio_levaGrupoESubgrupoDoItem() throws Exception {
         Compra c = Compra.builder().tipo(TipoCompra.PATRIMONIAL).setorSolicitante(ti).fornecedor("Magazine").build();
         ItemCompra livre = ItemCompra.builder().descricao("Cadeira giratória")
                 .subcategoria(Subcategoria.builder().id(suprimentos.getId()).build())
@@ -181,6 +181,20 @@ class ItensCompraPorTipoTest {
         compraService.registrarAutorizacao(salva.getId(), AutorizacaoDiretoria.AUTORIZADA, "Ok", "delva.maria");
         compraService.darBaixa(salva.getId(), "NF-9", new BigDecimal("690.00"), null,
                 new DadosRecebimento("Carlos", ti.getId(), true, "daisy.dias"));
+
+        // Detalhes após a baixa: setor de entrega diferente do solicitante precisa vir carregado
+        // (open-in-view=false) — regressão vista em homologação (LazyInitializationException).
+        Setor outro = setorRepository.save(Setor.builder().nome("Recepção ItensTest").build());
+        Compra c2 = compraService.criarPreCompra(
+                Compra.builder().tipo(TipoCompra.PATRIMONIAL).setorSolicitante(ti).build(),
+                List.of(ItemCompra.builder().descricao("Mesa").subcategoria(Subcategoria.builder().id(suprimentos.getId()).build())
+                        .quantidade(1).valorUnitario(BigDecimal.TEN).build()), null);
+        compraService.registrarAutorizacao(c2.getId(), AutorizacaoDiretoria.AUTORIZADA, "Ok", "delva.maria");
+        compraService.darBaixa(c2.getId(), "NF-10", BigDecimal.TEN, null,
+                new DadosRecebimento("Ana", outro.getId(), true, "daisy.dias"));
+        mvc.perform(get("/compras/" + c2.getId()).with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user("admin").roles("ADMIN")))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("Recepção ItensTest")));
 
         var payload = integracao.montarPayloadDaCompra(salva.getId());
         assertThat(payload.itens()).hasSize(1);

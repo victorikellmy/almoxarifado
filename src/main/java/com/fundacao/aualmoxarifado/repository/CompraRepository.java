@@ -49,6 +49,7 @@ public interface CompraRepository extends JpaRepository<Compra, Long> {
            LEFT JOIN FETCH i.subcategoria s
            LEFT JOIN FETCH s.area
            LEFT JOIN FETCH c.setorSolicitante
+           LEFT JOIN FETCH c.setorEntrega
            WHERE c.id = :id
            """)
     Optional<Compra> findByIdComItens(@Param("id") Long id);
