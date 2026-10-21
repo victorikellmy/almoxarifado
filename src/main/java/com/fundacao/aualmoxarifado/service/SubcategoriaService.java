@@ -25,7 +25,7 @@ public class SubcategoriaService {
     }
 
     public Subcategoria buscar(Long id) {
-        return subcategoriaRepository.findById(id)
+        return subcategoriaRepository.findComAreaById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Subcategoria não encontrada."));
     }
 

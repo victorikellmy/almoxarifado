@@ -41,7 +41,8 @@ public class MaterialService {
     }
 
     public Material buscar(Long id) {
-        return materialRepository.findById(id)
+        // Com a categoria carregada: etiqueta e edição exibem área/subcategoria.
+        return materialRepository.findComCategoriaById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Material", id));
     }
 

@@ -23,6 +23,14 @@ public interface MaterialRepository extends JpaRepository<Material, Long>,
      */
     Optional<Material> findByCodigoSku(String codigoSku);
 
+    /**
+     * Material com subcategoria e área já carregadas. As telas (etiqueta,
+     * edição) leem {@code material.subcategoria.area} depois da transação, e com
+     * {@code open-in-view=false} um proxy lazy ali estoura LazyInitializationException.
+     */
+    @EntityGraph(attributePaths = {"subcategoria", "subcategoria.area"})
+    Optional<Material> findComCategoriaById(Long id);
+
     /** RF18 - lookup em lote: resolve todos os SKUs de uma bipagem numa única query. */
     List<Material> findByCodigoSkuIn(Collection<String> codigosSku);
 

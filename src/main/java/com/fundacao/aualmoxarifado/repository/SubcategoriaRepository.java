@@ -15,6 +15,13 @@ import java.util.Optional;
 public interface SubcategoriaRepository extends JpaRepository<Subcategoria, Long> {
 
     /**
+     * Subcategoria com a área carregada — o form de edição exibe
+     * {@code subcategoria.area} depois da transação (open-in-view=false).
+     */
+    @EntityGraph(attributePaths = "area")
+    Optional<Subcategoria> findComAreaById(Long id);
+
+    /**
      * Listagem da tela de subcategorias. A Área vem no mesmo SELECT: com
      * {@code open-in-view=false} o Thymeleaf renderiza fora da sessão e não
      * conseguiria inicializar o proxy lazy de {@code area}.
